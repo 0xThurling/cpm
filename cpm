@@ -1,0 +1,269 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+from rich.console import Console
+from rich.status import Status
+from rich.text import Text
+from rich_argparse import RichHelpFormatter
+
+console = Console()
+error_console = Console(stderr=True)
+try:
+    import tomllib
+except ImportError:
+    import toml as tomllib
+
+def get_project_name():
+    """Gets the project name from the current directory's package.toml."""
+    try:
+        with open("package.toml", "rb") as f:
+            config = tomllib.load(f)
+        return config.get("project", {}).get("name")
+    except FileNotFoundError:
+        return None
+
+def create_project(args):
+    """Creates a new C++ project with a CMake-based structure."""
+    project_name = args.name
+    console.print(f"[bold cyan]--- Creating project: {project_name} ---[/bold cyan]")
+
+    os.makedirs(project_name, exist_ok=True)
+    os.makedirs(os.path.join(project_name, "src"), exist_ok=True)
+
+    # Create src/main.cpp
+    with open(os.path.join(project_name, "src", "main.cpp"), "w") as f:
+        f.write('''#include <iostream>
+
+int main() {
+    std::cout << "Hello, C++ World!" << std::endl;
+    return 0;
+}
+''')
+
+    # Create package.toml
+    with open(os.path.join(project_name, "package.toml"), "w") as f:
+        f.write(f'''[project]
+name = "{project_name}"
+
+[dependencies]
+# Example:
+# sdl = {{ git = "https://github.com/libsdl-org/SDL.git", tag = "release-2.30.3", target="SDL2::SDL2" }}
+''')
+
+    # Create a placeholder .gitignore
+    with open(os.path.join(project_name, ".gitignore"), "w") as f:
+        f.write("build/\n")
+
+    console.print(f"[bold green]Successfully created project `{project_name}`.[/bold green]")
+    console.print(f"To get started, `cd [bold yellow]{project_name}[/bold yellow]` and edit [bold yellow]package.toml[/bold yellow] to add dependencies.")
+
+def build_project(args):
+    """Builds the project by generating a CMakeLists.txt and running CMake."""
+    project_name = get_project_name()
+    if not project_name:
+        error_console.print("Error: Not a cpm project. `package.toml` not found or is missing project name.", style="bold red")
+        sys.exit(1)
+    
+    console.print("[bold cyan]--- Configuring project and generating CMakeLists.txt ---[/bold cyan]")
+
+    try:
+        with open("package.toml", "rb") as f:
+            config = tomllib.load(f)
+        dependencies = config.get("dependencies", {})
+    except FileNotFoundError:
+        error_console.print("Error: `package.toml` not found.", style="bold red")
+        sys.exit(1)
+
+    # Generate CMakeLists.txt content
+    cmake_content = f'''cmake_minimum_required(VERSION 3.20)
+project({project_name} LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+include(FetchContent)
+
+# --- Dependencies ---
+'''
+    
+    link_targets = []
+    for name, details in dependencies.items():
+        git_url = details.get("git")
+        tag = details.get("tag")
+        target = details.get("target", name) # Assume target name is package name if not specified
+        if not git_url or not tag:
+            error_console.print(f"[bold yellow]Warning:[/bold yellow] Skipping invalid dependency '[bold]{name}[/bold]'. 'git' and 'tag' are required.")
+            continue
+        
+        cmake_content += f'FetchContent_Declare({name} GIT_REPOSITORY "{git_url}" GIT_TAG "{tag}")\n'
+        link_targets.append(target)
+
+    cmake_content += "\n"
+
+    for name in dependencies:
+        cmake_content += f'FetchContent_MakeAvailable({name})\n'
+
+    cmake_content += f'''
+# --- Executable ---
+file(GLOB_RECURSE SOURCES "src/*.cpp")
+add_executable({project_name} ${{SOURCES}})
+
+# --- Linking ---
+'''
+    if link_targets:
+        cmake_content += f"target_link_libraries({project_name} PRIVATE {' '.join(link_targets)})\n"
+
+    with open("CMakeLists.txt", "w") as f:
+        f.write(cmake_content)
+    
+    console.print("[bold cyan]--- Running CMake to build project ---[/bold cyan]")
+    verbose = getattr(args, 'verbose', False)
+    stdout_pipe = None if verbose else subprocess.PIPE
+    stderr_pipe = None if verbose else subprocess.PIPE
+
+    status_text = "Building project..." if not verbose else None
+    with console.status(status_text, spinner="dots") if status_text else console: # type: ignore
+        try:
+            # Configure step
+            cmake_configure_command = ["cmake", "-B", "build", "-S", ".", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
+            subprocess.run(cmake_configure_command, check=True, stdout=stdout_pipe, stderr=stderr_pipe)
+
+            # Create a symlink in the root for the LSP
+            compile_commands_path = os.path.join("build", "compile_commands.json")
+            symlink_path = "compile_commands.json"
+            if os.path.exists(compile_commands_path):
+                if os.path.lexists(symlink_path):
+                    os.remove(symlink_path)
+                os.symlink(compile_commands_path, symlink_path)
+                if verbose:
+                    console.print("[bold green]--- Created compile_commands.json for LSP ---[/bold green]")
+
+            # Build step
+            subprocess.run(["cmake", "--build", "build"], check=True, stdout=stdout_pipe, stderr=stderr_pipe)
+            console.print("[bold green]\nBuild finished successfully.[/bold green]")
+
+        except subprocess.CalledProcessError as e:
+            error_console.print("[bold red]\nCMake build failed.[/bold red]")
+            # If output was hidden, print it now on error
+            if not verbose:
+                if e.stdout:
+                    error_console.print(e.stdout.decode())
+                if e.stderr:
+                    error_console.print(e.stderr.decode())
+            sys.exit(1)
+        except FileNotFoundError:
+            error_console.print("[bold red]\nError:[/bold red] `cmake` command not found. Please ensure CMake is installed and in your PATH.")
+            sys.exit(1)
+
+
+def run_project(args):
+    """Runs the project after building it."""
+    # First, build the project
+    build_project(args)
+
+    project_name = get_project_name()
+    if not project_name:
+        error_console.print("Error: Could not find project name to run.", style="bold red")
+        sys.exit(1)
+
+    executable_path = os.path.join("build", project_name)
+    if not os.path.exists(executable_path):
+        error_console.print(f"Error: Executable not found at '[bold]{executable_path}[/bold]'.", style="bold red")
+        sys.exit(1)
+
+    console.print(f"[bold cyan]--- Running {project_name} ---[/bold cyan]")
+    subprocess.run([executable_path, *args.program_args])
+
+
+def new_class(args):
+    """Creates a new class .h and .cpp file in the src directory."""
+    class_name = args.name
+    if not os.path.exists("src"):
+        error_console.print("Error: `src` directory not found. Please run this command from the project root.", style="bold red")
+        sys.exit(1)
+
+    header_content = f"""#ifndef {class_name.upper()}_H
+#define {class_name.upper()}_H
+
+class {class_name} {{
+public:
+    {class_name}();
+    ~{class_name}();
+}};
+
+#endif // {class_name.upper()}_H
+"""
+
+    cpp_content = f"""#include "{class_name}.h"
+
+{class_name}::{class_name}() {{
+    // Constructor implementation
+}}
+
+{class_name}::~{class_name}() {{
+    // Destructor implementation
+}}
+"""
+
+    header_path = os.path.join("src", f"{class_name}.h")
+    cpp_path = os.path.join("src", f"{class_name}.cpp")
+
+    if os.path.exists(header_path) or os.path.exists(cpp_path):
+        error_console.print(f"Error: Class `[bold]{class_name}[/bold]` already exists.", style="bold red")
+        sys.exit(1)
+
+    with open(header_path, "w") as f:
+        f.write(header_content)
+
+    with open(cpp_path, "w") as f:
+        f.write(cpp_content)
+
+    console.print(f"[bold green]Created class `[bold]{class_name}[/bold]` in `src/`.[/bold green]")
+
+def clean_project(args):
+    """Removes the build directory."""
+    build_dir = "build"
+    if os.path.exists(build_dir):
+        console.print(f"[bold cyan]--- Removing build directory: {build_dir} ---[/bold cyan]")
+        shutil.rmtree(build_dir)
+        console.print("[bold green]Project cleaned.[/bold green]")
+    else:
+        console.print("[yellow]Build directory not found. Nothing to clean.[/yellow]")
+
+def main():
+    parser = argparse.ArgumentParser(description="cpm: A simple C++ project manager using CMake.", formatter_class=RichHelpFormatter)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    create_parser = subparsers.add_parser("create", help="Create a new C++ project.")
+    create_parser.add_argument("name", help="The name of the project.")
+    create_parser.set_defaults(func=create_project)
+
+    build_parser = subparsers.add_parser("build", help="Generate CMakeLists and build the project.")
+    build_parser.add_argument("-v", "--verbose", action="store_true", help="Show verbose output from CMake.")
+    build_parser.set_defaults(func=build_project)
+
+    run_parser = subparsers.add_parser("run", help="Build and run the project.")
+    run_parser.add_argument("-v", "--verbose", action="store_true", help="Show verbose output from CMake during the build.")
+    run_parser.add_argument("program_args", nargs=argparse.REMAINDER, help="Arguments to pass to the program.")
+    run_parser.set_defaults(func=run_project)
+
+    clean_parser = subparsers.add_parser("clean", help="Remove the build directory.")
+    clean_parser.set_defaults(func=clean_project)
+
+    # New command
+    new_parser = subparsers.add_parser("new", help="Create a new entity.")
+    new_subparsers = new_parser.add_subparsers(dest="entity", required=True)
+    
+    new_class_parser = new_subparsers.add_parser("class", help="Create a new class.")
+    new_class_parser.add_argument("name", help="The name of the class.")
+    new_class_parser.set_defaults(func=new_class)
+
+    args = parser.parse_args()
+    args.func(args)
+
+if __name__ == "__main__":
+    main()
