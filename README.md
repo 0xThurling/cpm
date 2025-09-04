@@ -8,8 +8,8 @@
 *   **Dependency Management:** Declare Git-based dependencies in a `package.toml` file, which `cpm` automatically fetches and integrates into your CMake build.
 *   **Automated Builds:** Generates `CMakeLists.txt` based on your `package.toml` and handles the entire CMake build process.
 *   **Resource Management:** Embed assets (images, shaders, etc.) directly into your executable and access them through a simple, generated API.
-*   **Code Generation:** Generate boilerplate for new C++ classes, structs, or blank header/source file pairs.
-*   **Testing Framework:** Easily create and run tests with built-in support for Google Test.
+*   **Code Generation:** Generate boilerplate for new C++ classes, structs, blank headers, or source file pairs.
+*   **All-in-One Testing:** A single command to create the test harness (if needed), build, and run your tests using Google Test.
 *   **LSP Support:** Automatically generates `compile_commands.json` for improved Language Server Protocol (LSP) support in editors.
 
 ## Installation
@@ -70,7 +70,7 @@ Builds and runs the executable. Arguments after `run` are passed to your program
 
 ### `cpm test`
 
-Builds and runs the tests.
+Builds and runs the tests. If the test directory does not exist, `cpm` will automatically create it, add a sample test file, and configure `googletest` for you.
 
 ### `cpm clean`
 
@@ -115,13 +115,15 @@ type = "executable"
 # sdl = { git = "https://github.com/libsdl-org/SDL.git", tag = "release-2.30.3", target="SDL2::SDL2" }
 
 [resources]
-# Example:
-# "assets/icon.png"
+files = [
+    # "assets/icon.png",
+    # "assets/shader.glsl"
+]
 ```
 
 ### `[resources]` Section
 
-This is a list of file paths for assets you want to embed in your project via the `cpm embed` command.
+*   `files`: A list of file paths for assets you want to embed in your project via the `cpm embed` command.
 
 ## Contributing
 

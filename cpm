@@ -83,7 +83,8 @@ def build_project(args):
         dependencies = config.get("dependencies", {})
         project_type = config.get("project", {}).get("type", "executable") # Get project type
         install_headers = config.get("project", {}).get("install_headers", False) # Get install_headers flag
-        resources = config.get("resources", []) # Get resources
+        resources_table = config.get("resources", {})
+        resources = resources_table.get("files", [])
     except FileNotFoundError:
         error_console.print("Error: `package.toml` not found.", style="bold red")
         sys.exit(1)
@@ -394,13 +395,15 @@ def embed_resource(args):
         sys.exit(1)
 
     if "resources" not in config:
-        config["resources"] = []
+        config["resources"] = {"files": []}
+    elif "files" not in config.get("resources", {}):
+        config["resources"]["files"] = []
     
     # Use relative path for portability
     relative_path = os.path.relpath(file_path)
 
-    if relative_path not in config["resources"]:
-        config["resources"].append(relative_path)
+    if relative_path not in config["resources"]["files"]:
+        config["resources"]["files"].append(relative_path)
         
         try:
             with open("package.toml", "w") as f:
@@ -548,12 +551,15 @@ TEST(HelloTest, BasicAssertions) {
         console.print("[yellow]googletest dependency already exists in package.toml.[/yellow]")
 
     console.print("[bold green]Tests created successfully.[/bold green]")
-    build_project(args)
+
 
 
 
 def test_project(args):
     """Builds and runs the tests."""
+    if not os.path.exists("test"):
+        create_tests(args)
+
     build_project(args)
 
     console.print("[bold cyan]--- Running Tests ---")
@@ -628,10 +634,7 @@ def main():
     new_source_parser.add_argument("name", help="The name of the source files (without extension)." )
     new_source_parser.set_defaults(func=new_source)
 
-    new_test_parser = new_subparsers.add_parser("tests", help="Create tests.")
-    new_test_parser.add_argument("-v", "--verbose", action="store_true", help="Show verbose output from CMake.")
-    new_test_parser.add_argument("--std", default="20", help="C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")
-    new_test_parser.set_defaults(func=create_tests)
+    
 
     embed_parser = subparsers.add_parser("embed", help="Embed a resource file into a C++ header.")
     embed_parser.add_argument("file_path", help="The path to the resource file to embed.")
