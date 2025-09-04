@@ -1,15 +1,15 @@
 # cpm: A Simple C++ Project Manager
 
-`cpm` (C++ Project Manager) is a command-line tool designed to simplify the creation, building, and management of C++ projects using CMake. It provides a streamlined workflow for common development tasks, including project scaffolding, dependency management via Git repositories, and automated CMake configuration.
+`cpm` (C++ Project Manager) is a command-line tool designed to simplify the creation, building, and management of C++ projects using CMake. It provides a streamlined workflow for common development tasks, including project scaffolding, dependency management, and automated code generation.
 
 ## Features
 
-*   **Project Creation:** Quickly scaffold new C++ projects with a standard directory structure and a basic `main.cpp`.
-*   **Dependency Management:** Declare Git-based dependencies in a `package.toml` file, which `cpm` automatically fetches and integrates into your CMake build using `FetchContent`.
-*   **Automated Builds:** Generates `CMakeLists.txt` based on your `package.toml` and handles the CMake build process.
-*   **Project Execution:** Build and run your C++ applications with a single command.
-*   **Code Generation:** Generate boilerplate code for new C++ classes (`.h` and `.cpp` files).
-*   **Project Cleaning:** Easily remove build artifacts.
+*   **Project Creation:** Quickly scaffold new C++ projects with a standard directory structure, including `src/` and `assets/` directories.
+*   **Dependency Management:** Declare Git-based dependencies in a `package.toml` file, which `cpm` automatically fetches and integrates into your CMake build.
+*   **Automated Builds:** Generates `CMakeLists.txt` based on your `package.toml` and handles the entire CMake build process.
+*   **Resource Management:** Embed assets (images, shaders, etc.) directly into your executable and access them through a simple, generated API.
+*   **Code Generation:** Generate boilerplate for new C++ classes, structs, or blank header/source file pairs.
+*   **Testing Framework:** Easily create and run tests with built-in support for Google Test.
 *   **LSP Support:** Automatically generates `compile_commands.json` for improved Language Server Protocol (LSP) support in editors.
 
 ## Installation
@@ -20,46 +20,30 @@
 *   **CMake 3.20+:** Required for building C++ projects.
 *   **Git:** Necessary for fetching Git-based dependencies.
 
-### Steps
+### Easy Installation (Cross-Platform)
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/cpm.git
-    cd cpm
-    ```
-    *(Note: Replace `https://github.com/your-username/cpm.git` with the actual repository URL if this project is hosted on GitHub.)*
+You can install `cpm` with a single command by running the `install.py` script:
 
-2.  **Make the `cpm` script executable:**
-    ```bash
-    chmod +x cpm
-    ```
+```bash
+git clone https://github.com/0xThurling/cpm.git
+cd cpm
+python3 install.py
+```
 
-3.  **Add `cpm` to your system's PATH (optional, but recommended):**
-    You can move the `cpm` script to a directory that's already in your PATH (e.g., `/usr/local/bin` or `~/bin`), or add the `cpm` directory to your PATH.
+The script will:
+1.  Check for all the prerequisites.
+2.  Install all needed dependencies in a virtual environment.
+3.  Add `cpm` to your system's PATH.
 
-    Example (for current session):
-    ```bash
-    export PATH=$PATH:$(pwd)
-    ```
+### Updating
 
-    Example (permanently, add to your shell's config file like `.bashrc`, `.zshrc`, etc.):
-    ```bash
-    echo 'export PATH=$PATH:/path/to/cpm' >> ~/.bashrc
-    source ~/.bashrc
-    ```
-    *(Replace `/path/to/cpm` with the actual absolute path to the directory containing the `cpm` script.)*
-
-4.  **Install Python dependencies:**
-    `cpm` uses `rich`, `rich-argparse`, and `tomllib` (or `toml` for older Python versions).
-    ```bash
-    pip install rich rich-argparse toml
-    ```
+To update `cpm` to the latest version, simply run the `install.py` script again from within the `cpm` directory.
 
 ## Usage
 
 ### `cpm create <project_name>`
 
-Creates a new C++ project with the specified name.
+Creates a new C++ project.
 
 ```bash
 cpm create my_new_project
@@ -71,97 +55,73 @@ This will create a directory `my_new_project` with the following structure:
 my_new_project/
 ├── src/
 │   └── main.cpp
+├── assets/
 ├── package.toml
 └── .gitignore
 ```
 
-### `cpm build [-v|--verbose]`
+### `cpm build`
 
-Generates the `CMakeLists.txt` file based on `package.toml` and builds the project. Run this command from the root of your project directory.
+Generates the `CMakeLists.txt` file and builds the project.
 
-*   `-v`, `--verbose`: Show verbose output from CMake during the build process.
+### `cpm run [program_args...]`
 
-```bash
-cpm build
-cpm build -v
-```
+Builds and runs the executable. Arguments after `run` are passed to your program.
 
-### `cpm run [-v|--verbose] [program_args...]`
+### `cpm test`
 
-Builds the project (if not already built) and then runs the executable. Any arguments after `run` will be passed directly to your program.
-
-*   `-v`, `--verbose`: Show verbose output from CMake during the build process.
-*   `[program_args...]`: Arguments to pass to your compiled executable.
-
-```bash
-cpm run
-cpm run -v
-cpm run arg1 arg2
-```
+Builds and runs the tests.
 
 ### `cpm clean`
 
-Removes the `build/` directory, effectively cleaning all build artifacts.
+Removes the `build/` directory.
+
+### `cpm embed <file_path>`
+
+Registers a resource file (e.g., `assets/icon.png`) in your `package.toml`. The `cpm build` command will then generate C++ code to make the asset's data available at runtime.
 
 ```bash
-cpm clean
+cpm embed assets/icon.png
 ```
 
-### `cpm new class <class_name>`
+In your code, you can then access the asset:
+```cpp
+#include "embedded_resources.h"
 
-Generates boilerplate `.h` and `.cpp` files for a new C++ class in the `src/` directory. Run this command from the root of your project directory.
-
-```bash
-cpm new class MyClass
+const Embedded::Resource& icon = Embedded::get("icon.png");
+// Use icon.data and icon.size
 ```
 
-This will create `src/MyClass.h` and `src/MyClass.cpp`.
+### `cpm new <entity> <name>`
 
-## Project Structure
+Generates boilerplate code in the `src/` directory.
 
-A `cpm` managed project typically has the following structure:
-
-```
-my_project/
-├── src/
-│   ├── main.cpp
-│   └── MyClass.h
-│   └── MyClass.cpp
-├── package.toml
-├── .gitignore
-├── build/  (generated by cpm build)
-└── compile_commands.json (symlink, generated by cpm build for LSP)
-```
+*   **`cpm new class <ClassName>`**: Creates `ClassName.h` and `ClassName.cpp`.
+*   **`cpm new struct <StructName>`**: Creates `StructName.h` and `StructName.cpp`.
+*   **`cpm new header <FileName>`**: Creates a blank header file `FileName.h`.
+*   **`cpm new source <FileName>`**: Creates `FileName.h` and `FileName.cpp`.
 
 ## `package.toml` Configuration
-
-The `package.toml` file is central to `cpm` for defining project metadata and dependencies.
 
 ### Example `package.toml`
 
 ```toml
 [project]
 name = "my_project"
+type = "executable"
 
 [dependencies]
 # Example:
 # sdl = { git = "https://github.com/libsdl-org/SDL.git", tag = "release-2.30.3", target="SDL2::SDL2" }
-# spdlog = { git = "https://github.com/gabime/spdlog.git", tag = "v1.12.0", target="spdlog::spdlog" }
+
+[resources]
+# Example:
+# "assets/icon.png"
 ```
 
-### `[project]` Section
+### `[resources]` Section
 
-*   `name`: (Required) The name of your C++ project. This will be used for the executable name and in `CMakeLists.txt`.
-
-### `[dependencies]` Section
-
-Define your project's external dependencies here. `cpm` uses CMake's `FetchContent` module to download and include these dependencies.
-
-Each dependency is defined as a key-value pair, where the key is an arbitrary name for the dependency (e.g., `sdl`, `spdlog`), and the value is a table containing its details:
-
-*   `git`: (Required) The Git repository URL of the dependency.
-*   `tag`: (Required) The Git tag, branch, or commit hash to fetch.
-*   `target`: (Optional) The CMake target name provided by the fetched library. If omitted, `cpm` will assume the target name is the same as the dependency's key (e.g., `sdl` would look for target `sdl`). It's highly recommended to explicitly specify this if you know the correct CMake target name (e.g., `SDL2::SDL2` for SDL).
+This is a list of file paths for assets you want to embed in your project via the `cpm embed` command.
 
 ## Contributing
 
@@ -169,4 +129,4 @@ Contributions are welcome! Please feel free to open issues or submit pull reques
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.

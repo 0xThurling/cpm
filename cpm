@@ -11,6 +11,7 @@ from rich_argparse import RichHelpFormatter
 
 console = Console()
 error_console = Console(stderr=True)
+import toml
 try:
     import tomllib
 except ImportError:
@@ -28,14 +29,16 @@ def get_project_name():
 def create_project(args):
     """Creates a new C++ project with a CMake-based structure."""
     project_name = args.name
-    console.print(f"[bold cyan]--- Creating project: {project_name} ---[/bold cyan]")
+    console.print(f"[bold cyan]--- Creating project: {project_name} ---")
 
     os.makedirs(project_name, exist_ok=True)
     os.makedirs(os.path.join(project_name, "src"), exist_ok=True)
+    os.makedirs(os.path.join(project_name, "assets"), exist_ok=True)
 
-    # Create src/main.cpp
-    with open(os.path.join(project_name, "src", "main.cpp"), "w") as f:
-        f.write('''#include <iostream>
+    if args.type == "executable":
+        # Create src/main.cpp for executable
+        with open(os.path.join(project_name, "src", "main.cpp"), "w") as f:
+            f.write('''#include <iostream>
 
 int main() {
     std::cout << "Hello, C++ World!" << std::endl;
@@ -44,21 +47,25 @@ int main() {
 ''')
 
     # Create package.toml
-    with open(os.path.join(project_name, "package.toml"), "w") as f:
-        f.write(f'''[project]
-name = "{project_name}"
+    project_config = {"name": project_name, "type": args.type}
+    if args.type == "library":
+        project_config["install_headers"] = True # Add install_headers for libraries
 
-[dependencies]
-# Example:
-# sdl = {{ git = "https://github.com/libsdl-org/SDL.git", tag = "release-2.30.3", target="SDL2::SDL2" }}
-''')
+    config = {
+        "project": project_config,
+        "dependencies": {}
+    }
+    with open(os.path.join(project_name, "package.toml"), "w") as f:
+        toml.dump(config, f)
 
     # Create a placeholder .gitignore
     with open(os.path.join(project_name, ".gitignore"), "w") as f:
         f.write("build/\n")
+        f.write("lib/\n")
+        f.write("compile_commands.json\n")
 
     console.print(f"[bold green]Successfully created project `{project_name}`.[/bold green]")
-    console.print(f"To get started, `cd [bold yellow]{project_name}[/bold yellow]` and edit [bold yellow]package.toml[/bold yellow] to add dependencies.")
+    console.print(f"To get started, `cd [bold yellow]{project_name}[/bold yellow]`.")
 
 def build_project(args):
     """Builds the project by generating a CMakeLists.txt and running CMake."""
@@ -67,21 +74,30 @@ def build_project(args):
         error_console.print("Error: Not a cpm project. `package.toml` not found or is missing project name.", style="bold red")
         sys.exit(1)
     
-    console.print("[bold cyan]--- Configuring project and generating CMakeLists.txt ---[/bold cyan]")
+    verbose = getattr(args, 'verbose', False)
+    console.print("[bold cyan]--- Configuring project and generating CMakeLists.txt ---")
 
     try:
         with open("package.toml", "rb") as f:
             config = tomllib.load(f)
         dependencies = config.get("dependencies", {})
+        project_type = config.get("project", {}).get("type", "executable") # Get project type
+        install_headers = config.get("project", {}).get("install_headers", False) # Get install_headers flag
+        resources = config.get("resources", []) # Get resources
     except FileNotFoundError:
         error_console.print("Error: `package.toml` not found.", style="bold red")
         sys.exit(1)
 
+    # Generate resource files if any
+    if resources:
+        generate_resource_files(resources)
+
     # Generate CMakeLists.txt content
     cmake_content = f'''cmake_minimum_required(VERSION 3.20)
 project({project_name} LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 20)
+'''
+    cmake_content += f'''
+set(CMAKE_CXX_STANDARD {args.std})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -100,7 +116,8 @@ include(FetchContent)
             continue
         
         cmake_content += f'FetchContent_Declare({name} GIT_REPOSITORY "{git_url}" GIT_TAG "{tag}")\n'
-        link_targets.append(target)
+        if name != "googletest":
+            link_targets.append(target)
 
     cmake_content += "\n"
 
@@ -108,20 +125,49 @@ include(FetchContent)
         cmake_content += f'FetchContent_MakeAvailable({name})\n'
 
     cmake_content += f'''
-# --- Executable ---
-file(GLOB_RECURSE SOURCES "src/*.cpp")
-add_executable({project_name} ${{SOURCES}})
+# --- Project Target ---
+file(GLOB_RECURSE SOURCES ${{PROJECT_SOURCE_DIR}}/src/*.cpp)
+'''
+    if project_type == "executable":
+        cmake_content += f"add_executable({project_name} ${{SOURCES}})\n"
 
+    cmake_content += f'''
 # --- Linking ---
 '''
     if link_targets:
-        cmake_content += f"target_link_libraries({project_name} PRIVATE {' '.join(link_targets)})\n"
+        cmake_content += f"target_link_libraries({project_name} PRIVATE {' '.join(link_targets)})"
+
+    if os.path.exists("test"):
+        # Check if googletest is a dependency before adding test specific CMake
+        if "googletest" in dependencies:
+            cmake_content += f'''
+# --- Testing ---
+enable_testing()
+
+file(GLOB_RECURSE TEST_SOURCES "${{PROJECT_SOURCE_DIR}}/test/*.cpp")
+message(STATUS "Found test sources: ${{TEST_SOURCES}}")
+
+set(SOURCES_FOR_TESTS ${{SOURCES}})
+if(EXISTS "${{PROJECT_SOURCE_DIR}}/src/main.cpp")
+    list(REMOVE_ITEM SOURCES_FOR_TESTS "${{PROJECT_SOURCE_DIR}}/src/main.cpp")
+endif()
+
+add_executable(run_tests ${{TEST_SOURCES}} ${{SOURCES_FOR_TESTS}})
+
+target_include_directories(run_tests PRIVATE ${{CMAKE_CURRENT_SOURCE_DIR}}/src)
+
+target_link_libraries(run_tests PUBLIC GTest::gtest_main)
+
+include(GoogleTest)
+gtest_discover_tests(run_tests)
+'''
+        else:
+            error_console.print("[bold yellow]Warning:[/bold yellow] 'test' directory exists but 'googletest' is not a dependency in package.toml. Skipping test CMake generation.")
 
     with open("CMakeLists.txt", "w") as f:
         f.write(cmake_content)
     
-    console.print("[bold cyan]--- Running CMake to build project ---[/bold cyan]")
-    verbose = getattr(args, 'verbose', False)
+    console.print("[bold cyan]--- Running CMake to build project ---")
     stdout_pipe = None if verbose else subprocess.PIPE
     stderr_pipe = None if verbose else subprocess.PIPE
 
@@ -129,7 +175,7 @@ add_executable({project_name} ${{SOURCES}})
     with console.status(status_text, spinner="dots") if status_text else console: # type: ignore
         try:
             # Configure step
-            cmake_configure_command = ["cmake", "-B", "build", "-S", ".", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
+            cmake_configure_command = ["cmake", "-B", "build", "-S", ".", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON", "-DCMAKE_INSTALL_PREFIX=."]
             subprocess.run(cmake_configure_command, check=True, stdout=stdout_pipe, stderr=stderr_pipe)
 
             # Create a symlink in the root for the LSP
@@ -140,14 +186,22 @@ add_executable({project_name} ${{SOURCES}})
                     os.remove(symlink_path)
                 os.symlink(compile_commands_path, symlink_path)
                 if verbose:
-                    console.print("[bold green]--- Created compile_commands.json for LSP ---[/bold green]")
+                    console.print("[bold green]--- Created compile_commands.json for LSP ---")
 
             # Build step
-            subprocess.run(["cmake", "--build", "build"], check=True, stdout=stdout_pipe, stderr=stderr_pipe)
-            console.print("[bold green]\nBuild finished successfully.[/bold green]")
+            build_command = ["cmake", "--build", "build"]
+            if verbose:
+                build_command.append("--verbose")
+            subprocess.run(build_command, check=True, stdout=stdout_pipe, stderr=stderr_pipe)
+            console.print("[bold green]Build finished successfully.[/bold green]")
+
+            # Install step
+            # console.print("[bold cyan]--- Installing project ---")
+            # subprocess.run(["cmake", "--install", "build"], check=True, stdout=stdout_pipe, stderr=stderr_pipe)
+            # console.print("[bold green]Installation finished successfully.[/bold green]")
 
         except subprocess.CalledProcessError as e:
-            error_console.print("[bold red]\nCMake build failed.[/bold red]")
+            error_console.print("[bold red]CMake build failed.[/bold red]")
             # If output was hidden, print it now on error
             if not verbose:
                 if e.stdout:
@@ -156,9 +210,8 @@ add_executable({project_name} ${{SOURCES}})
                     error_console.print(e.stderr.decode())
             sys.exit(1)
         except FileNotFoundError:
-            error_console.print("[bold red]\nError:[/bold red] `cmake` command not found. Please ensure CMake is installed and in your PATH.")
+            error_console.print("[bold red]Error:[/bold red] `cmake` command not found. Please ensure CMake is installed and in your PATH.")
             sys.exit(1)
-
 
 def run_project(args):
     """Runs the project after building it."""
@@ -175,9 +228,8 @@ def run_project(args):
         error_console.print(f"Error: Executable not found at '[bold]{executable_path}[/bold]'.", style="bold red")
         sys.exit(1)
 
-    console.print(f"[bold cyan]--- Running {project_name} ---[/bold cyan]")
+    console.print(f"[bold cyan]--- Running {project_name} ---")
     subprocess.run([executable_path, *args.program_args])
-
 
 def new_class(args):
     """Creates a new class .h and .cpp file in the src directory."""
@@ -186,7 +238,7 @@ def new_class(args):
         error_console.print("Error: `src` directory not found. Please run this command from the project root.", style="bold red")
         sys.exit(1)
 
-    header_content = f"""#ifndef {class_name.upper()}_H
+    header_content = f'''#ifndef {class_name.upper()}_H
 #define {class_name.upper()}_H
 
 class {class_name} {{
@@ -196,9 +248,8 @@ public:
 }};
 
 #endif // {class_name.upper()}_H
-"""
-
-    cpp_content = f"""#include "{class_name}.h"
+'''
+    cpp_content = f'''#include "{class_name}.h"
 
 {class_name}::{class_name}() {{
     // Constructor implementation
@@ -207,8 +258,7 @@ public:
 {class_name}::~{class_name}() {{
     // Destructor implementation
 }}
-"""
-
+'''
     header_path = os.path.join("src", f"{class_name}.h")
     cpp_path = os.path.join("src", f"{class_name}.cpp")
 
@@ -224,15 +274,310 @@ public:
 
     console.print(f"[bold green]Created class `[bold]{class_name}[/bold]` in `src/`.[/bold green]")
 
+def new_struct(args):
+    """Creates a new struct .h and .cpp file in the src directory."""
+    struct_name = args.name
+    if not os.path.exists("src"):
+        error_console.print("Error: `src` directory not found. Please run this command from the project root.", style="bold red")
+        sys.exit(1)
+
+    header_content = f'''#ifndef {struct_name.upper()}_H
+#define {struct_name.upper()}_H
+
+struct {struct_name} {{
+    // struct members
+}};
+
+#endif // {struct_name.upper()}_H
+'''
+    cpp_content = f'''#include "{struct_name}.h"
+
+// Implementation for struct methods if any
+'''
+    header_path = os.path.join("src", f"{struct_name}.h")
+    cpp_path = os.path.join("src", f"{struct_name}.cpp")
+
+    if os.path.exists(header_path) or os.path.exists(cpp_path):
+        error_console.print(f"Error: Struct `[bold]{struct_name}[/bold]` already exists.", style="bold red")
+        sys.exit(1)
+
+    with open(header_path, "w") as f:
+        f.write(header_content)
+
+    with open(cpp_path, "w") as f:
+        f.write(cpp_content)
+
+    console.print(f"[bold green]Created struct `[bold]{struct_name}[/bold]` in `src/`.[/bold green]")
+
+def new_header(args):
+    """Creates a new header file in the src directory."""
+    file_name = args.name
+    if not os.path.exists("src"):
+        error_console.print("Error: `src` directory not found. Please run this command from the project root.", style="bold red")
+        sys.exit(1)
+
+    header_content = f'''#ifndef {file_name.upper()}_H
+#define {file_name.upper()}_H
+
+// Your code here
+
+#endif // {file_name.upper()}_H
+'''
+    header_path = os.path.join("src", f"{file_name}.h")
+
+    if os.path.exists(header_path):
+        error_console.print(f"Error: Header file `[bold]{file_name}.h[/bold]` already exists.", style="bold red")
+        sys.exit(1)
+
+    with open(header_path, "w") as f:
+        f.write(header_content)
+
+    console.print(f"[bold green]Created header file `[bold]{file_name}.h[/bold]` in `src/`.[/bold green]")
+
+def new_source(args):
+    """Creates a new header and cpp file in the src directory."""
+    file_name = args.name
+    if not os.path.exists("src"):
+        error_console.print("Error: `src` directory not found. Please run this command from the project root.", style="bold red")
+        sys.exit(1)
+
+    header_content = f'''#ifndef {file_name.upper()}_H
+#define {file_name.upper()}_H
+
+// Your code here
+
+#endif // {file_name.upper()}_H
+'''
+    cpp_content = f'''#include "{file_name}.h"
+
+// Your code here
+'''
+    header_path = os.path.join("src", f"{file_name}.h")
+    cpp_path = os.path.join("src", f"{file_name}.cpp")
+
+    if os.path.exists(header_path) or os.path.exists(cpp_path):
+        error_console.print(f"Error: Source files `[bold]{file_name}[/bold]` already exist.", style="bold red")
+        sys.exit(1)
+
+    with open(header_path, "w") as f:
+        f.write(header_content)
+
+    with open(cpp_path, "w") as f:
+        f.write(cpp_content)
+
+    console.print(f"[bold green]Created source files `[bold]{file_name}.h[/bold]` and `[bold]{file_name}.cpp[/bold]` in `src/`.[/bold green]")
+
 def clean_project(args):
     """Removes the build directory."""
     build_dir = "build"
     if os.path.exists(build_dir):
-        console.print(f"[bold cyan]--- Removing build directory: {build_dir} ---[/bold cyan]")
+        console.print(f"[bold cyan]--- Removing build directory: {build_dir} ---")
         shutil.rmtree(build_dir)
         console.print("[bold green]Project cleaned.[/bold green]")
     else:
         console.print("[yellow]Build directory not found. Nothing to clean.[/yellow]")
+
+def embed_resource(args):
+    """Registers a resource file in package.toml."""
+    file_path = args.file_path
+    if not os.path.exists(file_path):
+        error_console.print(f"Error: File not found at '[bold]{file_path}[/bold]'.", style="bold red")
+        sys.exit(1)
+
+    console.print(f"[bold cyan]--- Registering resource: {file_path} ---")
+
+    try:
+        with open("package.toml", "rb") as f:
+            config = tomllib.load(f)
+    except FileNotFoundError:
+        error_console.print("Error: `package.toml` not found.", style="bold red")
+        sys.exit(1)
+
+    if "resources" not in config:
+        config["resources"] = []
+    
+    # Use relative path for portability
+    relative_path = os.path.relpath(file_path)
+
+    if relative_path not in config["resources"]:
+        config["resources"].append(relative_path)
+        
+        try:
+            with open("package.toml", "w") as f:
+                toml.dump(config, f)
+            console.print(f"[bold green]Successfully registered `[bold]{relative_path}[/bold]` in package.toml.[/bold green]")
+        except IOError as e:
+            error_console.print(f"Error: Could not write to package.toml: {e}", style="bold red")
+            sys.exit(1)
+    else:
+        console.print(f"[yellow]Resource `[bold]{relative_path}[/bold]` is already registered in package.toml.[/yellow]")
+
+def generate_resource_files(resources):
+    """Generates C++ files for embedded resources."""
+    console.print("[bold cyan]--- Generating resource files ---")
+
+    header_path = os.path.join("src", "embedded_resources.h")
+    cpp_path = os.path.join("src", "embedded_resources.cpp")
+
+    # --- Generate Header File ---
+    header_lines = [
+        "#ifndef EMBEDDED_RESOURCES_H",
+        "#define EMBEDDED_RESOURCES_H",
+        "",
+        "#include <string>",
+        "#include <cstddef>",
+        "",
+        "namespace Embedded {",
+        "    struct Resource {",
+        "        const unsigned char* data;",
+        "        size_t size;",
+        "    };",
+        "",
+        "    const Resource& get(const std::string& name);",
+        "}",
+        "",
+        "#endif // EMBEDDED_RESOURCES_H"
+    ]
+    try:
+        with open(header_path, "w") as f:
+            f.write("\n".join(header_lines))
+    except IOError as e:
+        error_console.print(f"Error writing to {header_path}: {e}", style="bold red")
+        sys.exit(1)
+
+    # --- Generate Cpp File ---
+    cpp_lines = [
+        '#include "embedded_resources.h"',
+        '#include <map>', 
+        '#include <string>', 
+        ''
+    ]
+
+    # Add byte data for each resource
+    valid_resources = []
+    for resource_path in resources:
+        if not os.path.exists(resource_path):
+            error_console.print(f"Warning: Resource file not found: {resource_path}. Skipping.", style="bold yellow")
+            continue
+        valid_resources.append(resource_path)
+        
+        var_name = ''.join(c if c.isalnum() else '_' for c in resource_path)
+        cpp_lines.append(f"// Resource: {resource_path}")
+        
+        with open(resource_path, 'rb') as f:
+            data = f.read()
+        
+        cpp_lines.append(f"const unsigned char {var_name}_data[] = {{")
+        line = "    "
+        for i, byte in enumerate(data):
+            line += f"0x{byte:02x}, "
+            if (i + 1) % 16 == 0:
+                cpp_lines.append(line)
+                line = "    "
+        if line.strip():
+            cpp_lines.append(line.rstrip(','))
+        cpp_lines.append("};")
+        cpp_lines.append(f"const size_t {var_name}_size = {len(data)};")
+        cpp_lines.append("")
+
+    # Add the map and get function
+    cpp_lines.extend([
+        "namespace Embedded {",
+        "    static const std::map<std::string, Resource> resource_map = {",
+    ])
+    for resource_path in valid_resources:
+        base_name = os.path.basename(resource_path)
+        var_name = ''.join(c if c.isalnum() else '_' for c in resource_path)
+        cpp_lines.append(f'        {{"{base_name}", {{{var_name}_data, {var_name}_size}}}},' )
+    cpp_lines.extend([
+        "    };",
+        "",
+        "    const Resource& get(const std::string& name) {",
+        "        return resource_map.at(name);",
+        "    }",
+        "}",
+    ])
+
+    try:
+        with open(cpp_path, "w") as f:
+            f.write("\n".join(cpp_lines))
+    except IOError as e:
+        error_console.print(f"Error writing to {cpp_path}: {e}", style="bold red")
+        sys.exit(1)
+
+    console.print(f"[bold green]Successfully generated `[bold]{header_path}[/bold]` and `[bold]{cpp_path}[/bold]`.[/bold green]")
+
+
+def create_tests(args):
+    """Creates the test directory and adds googletest as a dependency."""
+    console.print("[bold cyan]--- Creating tests ---")
+
+    # Create tests directory
+    os.makedirs("test", exist_ok=True)
+
+    # Create test/main.cpp
+    with open(os.path.join("test", "main.cpp"), "w") as f:
+        f.write('''#include <gtest/gtest.h>
+
+// Demonstrate some basic assertions.
+TEST(HelloTest, BasicAssertions) {
+    // Expect two strings not to be equal.
+    EXPECT_STRNE("hello", "world");
+    // Expect equality.
+    EXPECT_EQ(7 * 6, 42);
+}
+''')
+
+    # Add googletest to package.toml
+    try:
+        with open("package.toml", "rb") as f:
+            config = tomllib.load(f)
+    except FileNotFoundError:
+        error_console.print("Error: `package.toml` not found.", style="bold red")
+        sys.exit(1)
+
+    if "dependencies" not in config:
+        config["dependencies"] = {}
+    
+    if "googletest" not in config["dependencies"]:
+        with open("package.toml", "a") as f:
+            f.write('googletest = { git = "https://github.com/google/googletest.git", tag = "v1.14.0" }\n')
+        
+        console.print("[bold green]Added googletest dependency to package.toml.[/bold green]")
+    else:
+        console.print("[yellow]googletest dependency already exists in package.toml.[/yellow]")
+
+    console.print("[bold green]Tests created successfully.[/bold green]")
+    build_project(args)
+
+
+
+def test_project(args):
+    """Builds and runs the tests."""
+    build_project(args)
+
+    console.print("[bold cyan]--- Running Tests ---")
+    
+    test_executable = os.path.join("build", "run_tests")
+    if not os.path.exists(test_executable):
+        error_console.print("Error: Test executable not found.", style="bold red")
+        sys.exit(1)
+
+    try:
+        test_command = [test_executable]
+        gtest_filter = None
+        if args.filter:
+            gtest_filter = args.filter
+        elif args.test_suite_name:
+            gtest_filter = f"{args.test_suite_name}.*" # Append ".*" for suite
+        
+        if gtest_filter:
+            test_command.append(f"--gtest_filter={gtest_filter}")
+        
+        subprocess.run(test_command, check=True)
+    except subprocess.CalledProcessError:
+        error_console.print("[bold red]Tests failed.[/bold red]")
+        sys.exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="cpm: A simple C++ project manager using CMake.", formatter_class=RichHelpFormatter)
@@ -240,19 +585,28 @@ def main():
 
     create_parser = subparsers.add_parser("create", help="Create a new C++ project.")
     create_parser.add_argument("name", help="The name of the project.")
+    create_parser.add_argument("--type", default="executable", choices=["executable", "library"], help="Type of project to create (executable or library). Defaults to executable.")
     create_parser.set_defaults(func=create_project)
 
     build_parser = subparsers.add_parser("build", help="Generate CMakeLists and build the project.")
     build_parser.add_argument("-v", "--verbose", action="store_true", help="Show verbose output from CMake.")
+    build_parser.add_argument("--std", default="20", help="C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")
     build_parser.set_defaults(func=build_project)
 
     run_parser = subparsers.add_parser("run", help="Build and run the project.")
     run_parser.add_argument("-v", "--verbose", action="store_true", help="Show verbose output from CMake during the build.")
+    run_parser.add_argument("--std", default="20", help="C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")
     run_parser.add_argument("program_args", nargs=argparse.REMAINDER, help="Arguments to pass to the program.")
     run_parser.set_defaults(func=run_project)
 
     clean_parser = subparsers.add_parser("clean", help="Remove the build directory.")
     clean_parser.set_defaults(func=clean_project)
+
+    test_parser = subparsers.add_parser("test", help="Build and run tests.")
+    test_parser.add_argument("test_suite_name", nargs='?', help="Optional: Name of the test suite to run (e.g., MyTestSuite).")
+    test_parser.add_argument("--filter", help="Filter tests to run (e.g., MyTestSuite.TestName or MyTestSuite.*).")
+    test_parser.add_argument("--std", default="20", help="C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")
+    test_parser.set_defaults(func=test_project)
 
     # New command
     new_parser = subparsers.add_parser("new", help="Create a new entity.")
@@ -261,6 +615,27 @@ def main():
     new_class_parser = new_subparsers.add_parser("class", help="Create a new class.")
     new_class_parser.add_argument("name", help="The name of the class.")
     new_class_parser.set_defaults(func=new_class)
+
+    new_struct_parser = new_subparsers.add_parser("struct", help="Create a new struct.")
+    new_struct_parser.add_argument("name", help="The name of the struct.")
+    new_struct_parser.set_defaults(func=new_struct)
+
+    new_header_parser = new_subparsers.add_parser("header", help="Create a new header file.")
+    new_header_parser.add_argument("name", help="The name of the header file (without extension)." )
+    new_header_parser.set_defaults(func=new_header)
+
+    new_source_parser = new_subparsers.add_parser("source", help="Create a new source file pair (.h/.cpp)." )
+    new_source_parser.add_argument("name", help="The name of the source files (without extension)." )
+    new_source_parser.set_defaults(func=new_source)
+
+    new_test_parser = new_subparsers.add_parser("tests", help="Create tests.")
+    new_test_parser.add_argument("-v", "--verbose", action="store_true", help="Show verbose output from CMake.")
+    new_test_parser.add_argument("--std", default="20", help="C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")
+    new_test_parser.set_defaults(func=create_tests)
+
+    embed_parser = subparsers.add_parser("embed", help="Embed a resource file into a C++ header.")
+    embed_parser.add_argument("file_path", help="The path to the resource file to embed.")
+    embed_parser.set_defaults(func=embed_resource)
 
     args = parser.parse_args()
     args.func(args)
