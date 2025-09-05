@@ -1,0 +1,284 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0": {
+      "Spectre.Console/0.50.0": {
+        "type": "package",
+        "dependencies": {
+          "System.Memory": "4.6.3"
+        },
+        "compile": {
+          "lib/net9.0/Spectre.Console.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/Spectre.Console.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Spectre.Console.Cli/0.50.0": {
+        "type": "package",
+        "dependencies": {
+          "Spectre.Console": "0.50.0"
+        },
+        "compile": {
+          "lib/net9.0/Spectre.Console.Cli.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/Spectre.Console.Cli.dll": {
+            "related": ".xml"
+          }
+        },
+        "resource": {
+          "lib/net9.0/de/Spectre.Console.Cli.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net9.0/es/Spectre.Console.Cli.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net9.0/fr/Spectre.Console.Cli.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net9.0/it/Spectre.Console.Cli.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net9.0/ja/Spectre.Console.Cli.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net9.0/ko/Spectre.Console.Cli.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net9.0/pt/Spectre.Console.Cli.resources.dll": {
+            "locale": "pt"
+          },
+          "lib/net9.0/ru/Spectre.Console.Cli.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net9.0/sv/Spectre.Console.Cli.resources.dll": {
+            "locale": "sv"
+          },
+          "lib/net9.0/zh-Hans/Spectre.Console.Cli.resources.dll": {
+            "locale": "zh-Hans"
+          }
+        }
+      },
+      "System.Memory/4.6.3": {
+        "type": "package",
+        "compile": {
+          "lib/netcoreapp2.1/_._": {}
+        },
+        "runtime": {
+          "lib/netcoreapp2.1/_._": {}
+        }
+      },
+      "Tomlyn/0.19.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/Tomlyn.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Tomlyn.dll": {
+            "related": ".xml"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Spectre.Console/0.50.0": {
+      "sha512": "gkwYncFqMjlPF6Yz8KeVsKWpdfv15sr6uKm+vXVa/8Q4tvx52LPzMQOO5m+bXwI3AGGFeY3cok3ZJbguYizswg==",
+      "type": "package",
+      "path": "spectre.console/0.50.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net8.0/Spectre.Console.dll",
+        "lib/net8.0/Spectre.Console.xml",
+        "lib/net9.0/Spectre.Console.dll",
+        "lib/net9.0/Spectre.Console.xml",
+        "lib/netstandard2.0/Spectre.Console.dll",
+        "lib/netstandard2.0/Spectre.Console.xml",
+        "logo.png",
+        "spectre.console.0.50.0.nupkg.sha512",
+        "spectre.console.nuspec"
+      ]
+    },
+    "Spectre.Console.Cli/0.50.0": {
+      "sha512": "PrctsupqHEbyoP/iRL30awUWB0Z91i21myKl70qcPwoH6marEPkPyaPgzc37xFm9QSx+/jVBQGUH7tsn0mWGNQ==",
+      "type": "package",
+      "path": "spectre.console.cli/0.50.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net8.0/Spectre.Console.Cli.dll",
+        "lib/net8.0/Spectre.Console.Cli.xml",
+        "lib/net8.0/de/Spectre.Console.Cli.resources.dll",
+        "lib/net8.0/es/Spectre.Console.Cli.resources.dll",
+        "lib/net8.0/fr/Spectre.Console.Cli.resources.dll",
+        "lib/net8.0/it/Spectre.Console.Cli.resources.dll",
+        "lib/net8.0/ja/Spectre.Console.Cli.resources.dll",
+        "lib/net8.0/ko/Spectre.Console.Cli.resources.dll",
+        "lib/net8.0/pt/Spectre.Console.Cli.resources.dll",
+        "lib/net8.0/ru/Spectre.Console.Cli.resources.dll",
+        "lib/net8.0/sv/Spectre.Console.Cli.resources.dll",
+        "lib/net8.0/zh-Hans/Spectre.Console.Cli.resources.dll",
+        "lib/net9.0/Spectre.Console.Cli.dll",
+        "lib/net9.0/Spectre.Console.Cli.xml",
+        "lib/net9.0/de/Spectre.Console.Cli.resources.dll",
+        "lib/net9.0/es/Spectre.Console.Cli.resources.dll",
+        "lib/net9.0/fr/Spectre.Console.Cli.resources.dll",
+        "lib/net9.0/it/Spectre.Console.Cli.resources.dll",
+        "lib/net9.0/ja/Spectre.Console.Cli.resources.dll",
+        "lib/net9.0/ko/Spectre.Console.Cli.resources.dll",
+        "lib/net9.0/pt/Spectre.Console.Cli.resources.dll",
+        "lib/net9.0/ru/Spectre.Console.Cli.resources.dll",
+        "lib/net9.0/sv/Spectre.Console.Cli.resources.dll",
+        "lib/net9.0/zh-Hans/Spectre.Console.Cli.resources.dll",
+        "lib/netstandard2.0/Spectre.Console.Cli.dll",
+        "lib/netstandard2.0/Spectre.Console.Cli.xml",
+        "lib/netstandard2.0/de/Spectre.Console.Cli.resources.dll",
+        "lib/netstandard2.0/es/Spectre.Console.Cli.resources.dll",
+        "lib/netstandard2.0/fr/Spectre.Console.Cli.resources.dll",
+        "lib/netstandard2.0/it/Spectre.Console.Cli.resources.dll",
+        "lib/netstandard2.0/ja/Spectre.Console.Cli.resources.dll",
+        "lib/netstandard2.0/ko/Spectre.Console.Cli.resources.dll",
+        "lib/netstandard2.0/pt/Spectre.Console.Cli.resources.dll",
+        "lib/netstandard2.0/ru/Spectre.Console.Cli.resources.dll",
+        "lib/netstandard2.0/sv/Spectre.Console.Cli.resources.dll",
+        "lib/netstandard2.0/zh-Hans/Spectre.Console.Cli.resources.dll",
+        "logo.png",
+        "spectre.console.cli.0.50.0.nupkg.sha512",
+        "spectre.console.cli.nuspec"
+      ]
+    },
+    "System.Memory/4.6.3": {
+      "sha512": "qdcDOgnFZY40+Q9876JUHnlHu7bosOHX8XISRoH94fwk6hgaeQGSgfZd8srWRZNt5bV9ZW2TljcegDNxsf+96A==",
+      "type": "package",
+      "path": "system.memory/4.6.3",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "PACKAGE.md",
+        "buildTransitive/net461/System.Memory.targets",
+        "buildTransitive/net462/_._",
+        "lib/net462/System.Memory.dll",
+        "lib/net462/System.Memory.xml",
+        "lib/netcoreapp2.1/_._",
+        "lib/netstandard2.0/System.Memory.dll",
+        "lib/netstandard2.0/System.Memory.xml",
+        "lib/netstandard2.1/_._",
+        "system.memory.4.6.3.nupkg.sha512",
+        "system.memory.nuspec"
+      ]
+    },
+    "Tomlyn/0.19.0": {
+      "sha512": "GlI2o8R8jbZIaE+YX6uA/VoAOH7zIxYeqxDm7jHW2hqUhuB+q19oKold35FkMuv8IZDoCqsTMolaBv2eBLBmrQ==",
+      "type": "package",
+      "path": "tomlyn/0.19.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net8.0/Tomlyn.dll",
+        "lib/net8.0/Tomlyn.xml",
+        "lib/netstandard2.0/Tomlyn.dll",
+        "lib/netstandard2.0/Tomlyn.xml",
+        "logo.png",
+        "readme.md",
+        "tomlyn.0.19.0.nupkg.sha512",
+        "tomlyn.nuspec"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0": [
+      "Spectre.Console >= 0.50.0",
+      "Spectre.Console.Cli >= 0.50.0",
+      "Tomlyn >= 0.19.0"
+    ]
+  },
+  "packageFolders": {
+    "/Users/jacquesthurling/.nuget/packages/": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "/Users/jacquesthurling/personal-projects/cpm/cpm_dotnet/cpm_dotnet.csproj",
+      "projectName": "cpm_dotnet",
+      "projectPath": "/Users/jacquesthurling/personal-projects/cpm/cpm_dotnet/cpm_dotnet.csproj",
+      "packagesPath": "/Users/jacquesthurling/.nuget/packages/",
+      "outputPath": "/Users/jacquesthurling/personal-projects/cpm/cpm_dotnet/obj/",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "/Users/jacquesthurling/.nuget/NuGet/NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.300"
+    },
+    "frameworks": {
+      "net9.0": {
+        "targetAlias": "net9.0",
+        "dependencies": {
+          "Spectre.Console": {
+            "target": "Package",
+            "version": "[0.50.0, )"
+          },
+          "Spectre.Console.Cli": {
+            "target": "Package",
+            "version": "[0.50.0, )"
+          },
+          "Tomlyn": {
+            "target": "Package",
+            "version": "[0.19.0, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.304/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

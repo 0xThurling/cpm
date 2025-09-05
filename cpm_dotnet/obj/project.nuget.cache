@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "ztH+o7xEoGI=",
+  "success": true,
+  "projectFilePath": "/Users/jacquesthurling/personal-projects/cpm/cpm_dotnet/cpm_dotnet.csproj",
+  "expectedPackageFiles": [
+    "/Users/jacquesthurling/.nuget/packages/spectre.console/0.50.0/spectre.console.0.50.0.nupkg.sha512",
+    "/Users/jacquesthurling/.nuget/packages/spectre.console.cli/0.50.0/spectre.console.cli.0.50.0.nupkg.sha512",
+    "/Users/jacquesthurling/.nuget/packages/system.memory/4.6.3/system.memory.4.6.3.nupkg.sha512",
+    "/Users/jacquesthurling/.nuget/packages/tomlyn/0.19.0/tomlyn.0.19.0.nupkg.sha512"
+  ],
+  "logs": []
+}
