@@ -1,11 +1,10 @@
 using Spectre.Console.Cli;
 using Spectre.Console;
 using System.ComponentModel;
-using System.IO;
 
 namespace cpm_dotnet.Commands
 {
-    public class NewHeaderCommandSettings : CommandSettings
+    public class NewHeaderCommandSettings : NewCommandSettings 
     {
         [CommandArgument(0, "<NAME>")]
         [Description("The name of the header file (without extension).")]

@@ -18,7 +18,7 @@ namespace cpm_dotnet.Commands
         {
             if (!File.Exists(settings.FilePath))
             {
-                AnsiConsole.MarkupLine($"[bold red]Error:[/bold red] File not found at '[bold]{settings.FilePath}[/]'.");
+                AnsiConsole.MarkupLine($"[bold red]Error:[/] File not found at '[bold]{settings.FilePath}[/]'.");
                 return 1;
             }
 
@@ -27,7 +27,7 @@ namespace cpm_dotnet.Commands
             var config = ProjectConfigManager.LoadConfig();
             if (config == null)
             {
-                AnsiConsole.MarkupLine("[bold red]Error:[/bold red] `package.toml` not found.");
+                AnsiConsole.MarkupLine("[bold red]Error:[/] `package.toml` not found.");
                 return 1;
             }
 
@@ -45,17 +45,17 @@ namespace cpm_dotnet.Commands
                 try
                 {
                     ProjectConfigManager.SaveConfig(config);
-                    AnsiConsole.MarkupLine($"[bold green]Successfully registered `[bold]{relativePath}[/]` in package.toml.[/bold green]");
+                    AnsiConsole.MarkupLine($"[bold green]Successfully registered `[bold]{relativePath}[/]` in package.toml.[/]");
                 }
                 catch (Exception ex)
                 {
-                    AnsiConsole.MarkupLine($"[bold red]Error:[/bold red] Could not write to package.toml: {ex.Message}");
+                    AnsiConsole.MarkupLine($"[bold red]Error:[/] Could not write to package.toml: {ex.Message}");
                     return 1;
                 }
             }
             else
             {
-                AnsiConsole.MarkupLine($"[yellow]Resource `[bold]{relativePath}[/]` is already registered in package.toml.[/yellow]");
+                AnsiConsole.MarkupLine($"[yellow]Resource `[bold]{relativePath}[/]` is already registered in package.toml.[/]");
             }
 
             return 0;

@@ -1,6 +1,4 @@
 using Spectre.Console;
-using System.IO;
-using System.Diagnostics;
 using System.Text;
 
 namespace cpm_dotnet
@@ -132,15 +130,18 @@ namespace cpm_dotnet
             Directory.CreateDirectory("test");
 
             // Create test/main.cpp
-            var testMainCppContent = @"#include <gtest/gtest.h>
+            var testMainCppContent = """
+            #include <gtest/gtest.h>
 
-// Demonstrate some basic assertions.
-TEST(HelloTest, BasicAssertions) {
-    // Expect two strings not to be equal.
-    EXPECT_STRNE(\"hello\", \"world\");
-    // Expect equality.
-    EXPECT_EQ(7 * 6, 42);
-}";
+            // Demonstrate some basic assertions.
+            TEST(HelloTest, BasicAssertions) {
+                // Expect two strings not to be equal.
+                EXPECT_STRNE(""hello"", ""world"");
+                // Expect equality.
+                EXPECT_EQ(7 * 6, 42);
+            }
+            """;
+
             File.WriteAllText(Path.Combine("test", "main.cpp"), testMainCppContent);
 
             // Add googletest to package.toml

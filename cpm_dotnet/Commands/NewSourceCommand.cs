@@ -5,7 +5,7 @@ using System.IO;
 
 namespace cpm_dotnet.Commands
 {
-    public class NewSourceCommandSettings : CommandSettings
+    public class NewSourceCommandSettings : NewCommandSettings 
     {
         [CommandArgument(0, "<NAME>")]
         [Description("The name of the source files (without extension).")]
@@ -23,19 +23,19 @@ namespace cpm_dotnet.Commands
                 return 1;
             }
 
-            var headerContent = $"---
-#ifndef {fileName.ToUpper()}_H
-#define {fileName.ToUpper()}_H
+            var headerContent = $$"""
+#ifndef {{fileName.ToUpper()}}_H
+#define {{fileName.ToUpper()}}_H
 
 // Your code here
 
-#endif // {fileName.ToUpper()}_H
----";
-            var cppContent = $"---
-#include \"{fileName}.h\"
+#endif // {{fileName.ToUpper()}}_H
+""";
+            var cppContent = $$"""
+#include "{{fileName}}.h"
 
 // Your code here
----";
+""";
 
             var headerPath = Path.Combine("src", $"{fileName}.h");
             var cppPath = Path.Combine("src", $"{fileName}.cpp");

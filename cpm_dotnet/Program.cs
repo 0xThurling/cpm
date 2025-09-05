@@ -2,36 +2,41 @@ using Spectre.Console.Cli;
 using cpm_dotnet.Commands;
 
 var app = new CommandApp();
-
-app.AddCommand<BuildCommand>("build")
-    .WithDescription("Generate CMakeLists and build the project.");
-
-app.AddCommand<CreateCommand>("create")
-    .WithDescription("Create a new C++ project.");
-
-app.AddCommand<RunCommand>("run")
-    .WithDescription("Build and run the project.");
-
-app.AddCommand<CleanCommand>("clean")
-    .WithDescription("Remove the build directory.");
-
-app.AddCommand<TestCommand>("test")
-    .WithDescription("Build and run tests.");
-
-app.AddBranch<NewCommandSettings>("new", config =>
+app.Configure(config =>
 {
-    config.SetDescription("Create a new entity.");
-    config.AddCommand<NewClassCommand>("class")
+  config.AddCommand<BuildCommand>("build")
+      .WithDescription("Generate CMakeLists and build the project.");
+
+  config.AddCommand<CreateCommand>("create")
+      .WithDescription("Create a new C++ project.");
+
+  config.AddCommand<RunCommand>("run")
+      .WithDescription("Build and run the project.");
+
+  config.AddCommand<CleanCommand>("clean")
+      .WithDescription("Remove the build directory.");
+
+  config.AddCommand<TestCommand>("test")
+      .WithDescription("Build and run tests.");
+
+
+  config.AddBranch<NewCommandSettings>("new", new_cmd =>
+  {
+    new_cmd.SetDescription("Create a new entity.");
+    new_cmd.AddCommand<NewClassCommand>("class")
           .WithDescription("Create a new class.");
-    config.AddCommand<NewStructCommand>("struct")
+    new_cmd.AddCommand<NewStructCommand>("struct")
           .WithDescription("Create a new struct.");
-    config.AddCommand<NewHeaderCommand>("header")
+    new_cmd.AddCommand<NewHeaderCommand>("header")
           .WithDescription("Create a new header file.");
-    config.AddCommand<NewSourceCommand>("source")
+    new_cmd.AddCommand<NewSourceCommand>("source")
           .WithDescription("Create a new source file pair (.h/.cpp).");
+  });
+
+  config.AddCommand<EmbedCommand>("embed")
+     .WithDescription("Embed a resource file into a C++ header.");
 });
 
-app.AddCommand<EmbedCommand>("embed")
-    .WithDescription("Embed a resource file into a C++ header.");
+
 
 return app.Run(args);

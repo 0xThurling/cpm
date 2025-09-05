@@ -5,7 +5,7 @@ using System.IO;
 
 namespace cpm_dotnet.Commands
 {
-    public class NewStructCommandSettings : CommandSettings
+    public class NewStructCommandSettings : NewCommandSettings 
     {
         [CommandArgument(0, "<NAME>")]
         [Description("The name of the struct.")]

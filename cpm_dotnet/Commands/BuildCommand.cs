@@ -1,7 +1,6 @@
 using Spectre.Console.Cli;
 using Spectre.Console;
 using System.ComponentModel;
-using System.IO;
 using System.Diagnostics;
 using System.Text;
 

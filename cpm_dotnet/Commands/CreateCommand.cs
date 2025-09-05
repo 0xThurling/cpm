@@ -22,7 +22,7 @@ namespace cpm_dotnet.Commands
         public override int Execute(CommandContext context, CreateCommandSettings settings)
         {
             var project_name = settings.Name;
-            AnsiConsole.MarkupLine($"[bold cyan]--- Creating project: {project_name} ---");
+            AnsiConsole.MarkupLine($"[bold cyan]--- Creating project: {project_name} ---[/]");
 
             try
             {
@@ -60,7 +60,7 @@ int main() {
                     projectConfig.Project.InstallHeaders = true;
                 }
 
-                ProjectConfigManager.SaveConfig(projectConfig);
+                ProjectConfigManager.SaveConfig(projectConfig, project_name);
 
                 // Create a placeholder .gitignore
                 var gitignoreContent = "build/\nlib/\ncompile_commands.json\n";
