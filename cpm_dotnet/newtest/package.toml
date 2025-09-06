@@ -1,7 +1,0 @@
-[project]
-name = "newtest"
-type = "executable"
-install_headers = false
-[dependencies]
-[resources]
-files = []

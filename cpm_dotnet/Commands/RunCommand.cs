@@ -1,59 +1,49 @@
-using Spectre.Console.Cli;
+using DotMake.CommandLine;
 using Spectre.Console;
-using System.ComponentModel;
-using System.IO;
 using System.Diagnostics;
 
 namespace cpm_dotnet.Commands
 {
-    public class RunCommandSettings : CommandSettings
+    [CliCommand(Name = "run", Description = "Build and run the project.", Parent = typeof(RootCommand))]
+    public class RunCommand
     {
-        [CommandOption("-v|--verbose")]
-        [Description("Show verbose output from CMake during the build.")]
+        [CliOption(Description = "Show verbose output from CMake during the build.")]
         public bool Verbose { get; set; }
 
-        [CommandOption("--std")]
-        [Description("C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")]
-        [DefaultValue("20")]
+        [CliOption(Description = "C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")]
         public string Standard { get; set; } = "20";
 
-        [CommandArgument(0, "[PROGRAM_ARGS]")]
-        [Description("Arguments to pass to the program.")]
+        [CliArgument(Description = "Arguments to pass to the program.")]
         public string[] ProgramArgs { get; set; } = Array.Empty<string>();
-    }
 
-    public class RunCommand : Command<RunCommandSettings>
-    {
-        public override int Execute(CommandContext context, RunCommandSettings settings)
+        public int Run()
         {
             // First, build the project
-            var buildCommand = new BuildCommand();
-            var buildSettings = new BuildCommandSettings
+            var buildCommand = new BuildCommand
             {
-                Verbose = settings.Verbose,
-                Standard = settings.Standard
+                Verbose = Verbose,
+                Standard = Standard
             };
-            var buildResult = buildCommand.Execute(context, buildSettings);
-            if (buildResult != 0)
+            if (!buildCommand.Run())
             {
-                return buildResult;
+                return 1; // Build failed
             }
 
             var projectName = ProjectConfigManager.GetProjectName();
             if (string.IsNullOrEmpty(projectName))
             {
-                AnsiConsole.MarkupLine("[bold red]Error:[/bold red] Could not find project name to run.");
+                AnsiConsole.MarkupLine("[bold red]Error:[/] Could not find project name to run.");
                 return 1;
             }
 
             var executablePath = Path.Combine("build", projectName);
             if (!File.Exists(executablePath))
             {
-                AnsiConsole.MarkupLine($"[bold red]Error:[/bold red] Executable not found at '[bold]{executablePath}[/]'.");
+                AnsiConsole.MarkupLine($"[bold red]Error:[/] Executable not found at '[bold]{executablePath}[/]'.");
                 return 1;
             }
 
-            AnsiConsole.MarkupLine($"[bold cyan]--- Running {projectName} ---");
+            AnsiConsole.MarkupLine($"[bold cyan]--- Running {projectName} ---[/]");
             try
             {
                 var processStartInfo = new ProcessStartInfo(executablePath)
@@ -64,7 +54,7 @@ namespace cpm_dotnet.Commands
                     CreateNoWindow = true,
                 };
 
-                foreach (var arg in settings.ProgramArgs)
+                foreach (var arg in ProgramArgs)
                 {
                     processStartInfo.ArgumentList.Add(arg);
                 }
@@ -78,7 +68,7 @@ namespace cpm_dotnet.Commands
             }
             catch (Exception ex)
             {
-                AnsiConsole.WriteException(ex, ExceptionFormats.ShortenPaths | ExceptionFormats.ShowLinks);
+                AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
                 return 1;
             }
         }

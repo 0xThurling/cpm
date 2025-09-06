@@ -1,37 +1,31 @@
-using Spectre.Console.Cli;
+using DotMake.CommandLine;
 using Spectre.Console;
-using System.IO;
 
 namespace cpm_dotnet.Commands
 {
-    public class CleanCommandSettings : CommandSettings
+    [CliCommand(Name = "clean", Description = "Remove the build directory.", Parent = typeof(RootCommand))]
+    public class CleanCommand
     {
-    }
-
-    public class CleanCommand : Command<CleanCommandSettings>
-    {
-        public override int Execute(CommandContext context, CleanCommandSettings settings)
+        public void Run()
         {
             var buildDir = "build";
             if (Directory.Exists(buildDir))
             {
-                AnsiConsole.MarkupLine($"[bold cyan]--- Removing build directory: {buildDir} ---");
+                AnsiConsole.MarkupLine($"[bold cyan]--- Removing build directory: {buildDir} ---[/]");
                 try
                 {
                     Directory.Delete(buildDir, true);
-                    AnsiConsole.MarkupLine("[bold green]Project cleaned.[/bold green]");
+                    AnsiConsole.MarkupLine("[bold green]Project cleaned.[/]");
                 }
                 catch (Exception ex)
                 {
-                    AnsiConsole.WriteException(ex, ExceptionFormats.ShortenPaths | ExceptionFormats.ShowLinks);
-                    return 1;
+                    AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
                 }
             }
             else
             {
-                AnsiConsole.MarkupLine("[yellow]Build directory not found. Nothing to clean.[/yellow]");
+                AnsiConsole.MarkupLine("[yellow]Build directory not found. Nothing to clean.[/]");
             }
-            return 0;
         }
     }
 }

@@ -1,38 +1,33 @@
-using Spectre.Console.Cli;
+using DotMake.CommandLine;
 using Spectre.Console;
-using System.ComponentModel;
-using System.IO;
 
 namespace cpm_dotnet.Commands
 {
-    public class EmbedCommandSettings : CommandSettings
+    [CliCommand(Name = "embed", Description = "Embed a resource file into a C++ header.", Parent = typeof(RootCommand))]
+    public class EmbedCommand
     {
-        [CommandArgument(0, "<FILE_PATH>")]
-        [Description("The path to the resource file to embed.")]
+        [CliArgument(Description = "The path to the resource file to embed.")]
         public string FilePath { get; set; } = string.Empty;
-    }
 
-    public class EmbedCommand : Command<EmbedCommandSettings>
-    {
-        public override int Execute(CommandContext context, EmbedCommandSettings settings)
+        public void Run()
         {
-            if (!File.Exists(settings.FilePath))
+            if (!File.Exists(FilePath))
             {
-                AnsiConsole.MarkupLine($"[bold red]Error:[/] File not found at '[bold]{settings.FilePath}[/]'.");
-                return 1;
+                AnsiConsole.MarkupLine($"[bold red]Error:[/] File not found at '[bold]{FilePath}[/]'.");
+                return;
             }
 
-            AnsiConsole.MarkupLine($"[bold cyan]--- Registering resource: {settings.FilePath} ---");
+            AnsiConsole.MarkupLine($"[bold cyan]--- Registering resource: {FilePath} ---[/]");
 
             var config = ProjectConfigManager.LoadConfig();
             if (config == null)
             {
                 AnsiConsole.MarkupLine("[bold red]Error:[/] `package.toml` not found.");
-                return 1;
+                return;
             }
 
             // Use relative path for portability
-            var relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), settings.FilePath);
+            var relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), FilePath);
 
             if (config.Resources == null)
             {
@@ -50,15 +45,12 @@ namespace cpm_dotnet.Commands
                 catch (Exception ex)
                 {
                     AnsiConsole.MarkupLine($"[bold red]Error:[/] Could not write to package.toml: {ex.Message}");
-                    return 1;
                 }
             }
             else
             {
                 AnsiConsole.MarkupLine($"[yellow]Resource `[bold]{relativePath}[/]` is already registered in package.toml.[/]");
             }
-
-            return 0;
         }
     }
 }

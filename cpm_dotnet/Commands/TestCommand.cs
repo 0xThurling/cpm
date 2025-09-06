@@ -1,30 +1,26 @@
-using Spectre.Console.Cli;
+using DotMake.CommandLine;
 using Spectre.Console;
 using System.ComponentModel;
 using System.IO;
 using System.Diagnostics;
+using System.Collections.Generic;
+using System;
 
 namespace cpm_dotnet.Commands
 {
-    public class TestCommandSettings : CommandSettings
+    [CliCommand(Name = "test", Description = "Build and run tests.", Parent = typeof(RootCommand))]
+    public class TestCommand
     {
-        [CommandArgument(0, "[TEST_SUITE_NAME]")]
-        [Description("Optional: Name of the test suite to run (e.g., MyTestSuite).")]
+        [CliArgument(Description = "Optional: Name of the test suite to run (e.g., MyTestSuite).")]
         public string? TestSuiteName { get; set; }
 
-        [CommandOption("--filter")]
-        [Description("Filter tests to run (e.g., MyTestSuite.TestName or MyTestSuite.*).")]
+        [CliOption(Description = "Filter tests to run (e.g., MyTestSuite.TestName or MyTestSuite.*).")]
         public string? Filter { get; set; }
 
-        [CommandOption("--std")]
-        [Description("C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")]
-        [DefaultValue("20")]
+        [CliOption(Description = "C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")]
         public string Standard { get; set; } = "20";
-    }
 
-    public class TestCommand : Command<TestCommandSettings>
-    {
-        public override int Execute(CommandContext context, TestCommandSettings settings)
+        public int Run()
         {
             if (!Directory.Exists("test"))
             {
@@ -32,16 +28,14 @@ namespace cpm_dotnet.Commands
             }
 
             // Build the project (which includes tests if googletest is present)
-            var buildCommand = new BuildCommand();
-            var buildSettings = new BuildCommandSettings
+            var buildCommand = new BuildCommand
             {
                 Verbose = false, // Tests usually don't need verbose build output
-                Standard = settings.Standard
+                Standard = Standard
             };
-            var buildResult = buildCommand.Execute(context, buildSettings);
-            if (buildResult != 0)
+            if (!buildCommand.Run())
             {
-                return buildResult;
+                return 1; // Build failed
             }
 
             AnsiConsole.MarkupLine("[bold cyan]--- Running Tests ---");
@@ -56,10 +50,10 @@ namespace cpm_dotnet.Commands
             try
             {
                 var testCommandArgs = new List<string>();
-                var gtestFilter = settings.Filter;
-                if (string.IsNullOrEmpty(gtestFilter) && !string.IsNullOrEmpty(settings.TestSuiteName))
+                var gtestFilter = Filter;
+                if (string.IsNullOrEmpty(gtestFilter) && !string.IsNullOrEmpty(TestSuiteName))
                 {
-                    gtestFilter = $"{settings.TestSuiteName}.*";
+                    gtestFilter = $"{TestSuiteName}.*";
                 }
 
                 if (!string.IsNullOrEmpty(gtestFilter))
@@ -94,7 +88,7 @@ namespace cpm_dotnet.Commands
             }
             catch (Exception ex)
             {
-                AnsiConsole.WriteException(ex, ExceptionFormats.ShortenPaths | ExceptionFormats.ShowLinks);
+                AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/red]");
                 return 1;
             }
 

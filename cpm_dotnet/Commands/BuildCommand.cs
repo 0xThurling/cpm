@@ -1,36 +1,30 @@
-using Spectre.Console.Cli;
+using DotMake.CommandLine;
 using Spectre.Console;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 
 namespace cpm_dotnet.Commands
 {
-    public class BuildCommandSettings : CommandSettings
+    [CliCommand(Name = "build", Description = "Generate CMakeLists and build the project.", Parent = typeof(RootCommand))]
+    public class BuildCommand
     {
-        [CommandOption("-v|--verbose")]
-        [Description("Show verbose output from CMake.")]
+        [CliOption(Description = "Show verbose output from CMake.")]
         public bool Verbose { get; set; }
 
-        [CommandOption("--std")]
-        [Description("C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")]
-        [DefaultValue("20")]
+        [CliOption(Description = "C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")]
         public string Standard { get; set; } = "20";
-    }
 
-    public class BuildCommand : Command<BuildCommandSettings>
-    {
-        public override int Execute(CommandContext context, BuildCommandSettings settings)
+        public bool Run()
         {
             var projectConfig = ProjectConfigManager.LoadConfig();
             if (projectConfig == null || string.IsNullOrEmpty(projectConfig.Project.Name))
             {
-                AnsiConsole.MarkupLine("[bold red]Error:[/bold red] Not a cpm project. `package.toml` not found or is missing project name.");
-                return 1;
+                AnsiConsole.MarkupLine("[bold red]Error:[/] Not a cpm project. `package.toml` not found or is missing project name.");
+                return false;
             }
 
             var projectName = projectConfig.Project.Name;
-            AnsiConsole.MarkupLine("[bold cyan]--- Configuring project and generating CMakeLists.txt ---");
+            AnsiConsole.MarkupLine("[bold cyan]--- Configuring project and generating CMakeLists.txt ---[/]");
 
             try
             {
@@ -45,7 +39,7 @@ namespace cpm_dotnet.Commands
                 cmakeContent.AppendLine("cmake_minimum_required(VERSION 3.20)");
                 cmakeContent.AppendLine($"project({projectName} LANGUAGES CXX)");
                 cmakeContent.AppendLine("");
-                cmakeContent.AppendLine($"set(CMAKE_CXX_STANDARD {settings.Standard})");
+                cmakeContent.AppendLine($"set(CMAKE_CXX_STANDARD {Standard})");
                 cmakeContent.AppendLine("set(CMAKE_CXX_STANDARD_REQUIRED ON)");
                 cmakeContent.AppendLine("set(CMAKE_CXX_EXTENSIONS OFF)");
                 cmakeContent.AppendLine("");
@@ -61,7 +55,7 @@ namespace cpm_dotnet.Commands
 
                     if (string.IsNullOrEmpty(details.Git) || string.IsNullOrEmpty(details.Tag))
                     {
-                        AnsiConsole.MarkupLine("[bold yellow]Warning:[/bold yellow] Skipping invalid dependency '[bold]" + name + "[/bold]'. 'git' and 'tag' are required.");
+                        AnsiConsole.MarkupLine("[bold yellow]Warning:[/] Skipping invalid dependency '[bold]" + name + "[/]'. 'git' and 'tag' are required.");
                         continue;
                     }
 
@@ -133,19 +127,19 @@ namespace cpm_dotnet.Commands
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine("[bold yellow]Warning:[/bold yellow] 'test' directory exists but 'googletest' is not a dependency in package.toml. Skipping test CMake generation.");
+                        AnsiConsole.MarkupLine("[bold yellow]Warning:[/] 'test' directory exists but 'googletest' is not a dependency in package.toml. Skipping test CMake generation.");
                     }
                 }
 
                 File.WriteAllText("CMakeLists.txt", cmakeContent.ToString());
 
-                AnsiConsole.MarkupLine("[bold cyan]--- Running CMake to build project ---");
+                AnsiConsole.MarkupLine("[bold cyan]--- Running CMake to build project ---[/]");
 
                 // Configure step
                 var cmakeConfigureCommand = new ProcessStartInfo("cmake", "-B build -S . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=.")
                 {
-                    RedirectStandardOutput = !settings.Verbose,
-                    RedirectStandardError = !settings.Verbose,
+                    RedirectStandardOutput = !Verbose,
+                    RedirectStandardError = !Verbose,
                     UseShellExecute = false,
                     CreateNoWindow = true,
                 };
@@ -156,13 +150,13 @@ namespace cpm_dotnet.Commands
                     process.WaitForExit();
                     if (process.ExitCode != 0)
                     {
-                        AnsiConsole.MarkupLine("[bold red]CMake configure failed.[/bold red]");
-                        if (!settings.Verbose)
+                        AnsiConsole.MarkupLine("[bold red]CMake configure failed.[/]");
+                        if (!Verbose)
                         {
                             AnsiConsole.MarkupLine(process.StandardOutput.ReadToEnd());
                             AnsiConsole.MarkupLine(process.StandardError.ReadToEnd());
                         }
-                        return 1;
+                        return false;
                     }
                 }
 
@@ -176,23 +170,23 @@ namespace cpm_dotnet.Commands
                         File.Delete(symlinkPath);
                     }
                     File.CreateSymbolicLink(symlinkPath, compileCommandsPath);
-                    if (settings.Verbose)
+                    if (Verbose)
                     {
-                        AnsiConsole.MarkupLine("[bold green]--- Created compile_commands.json for LSP ---");
+                        AnsiConsole.MarkupLine("[bold green]--- Created compile_commands.json for LSP ---[/]");
                     }
                 }
 
                 // Build step
                 var buildCommandArgs = new StringBuilder("--build build");
-                if (settings.Verbose)
+                if (Verbose)
                 {
                     buildCommandArgs.Append(" --verbose");
                 }
 
                 var cmakeBuildCommand = new ProcessStartInfo("cmake", buildCommandArgs.ToString())
                 {
-                    RedirectStandardOutput = !settings.Verbose,
-                    RedirectStandardError = !settings.Verbose,
+                    RedirectStandardOutput = !Verbose,
+                    RedirectStandardError = !Verbose,
                     UseShellExecute = false,
                     CreateNoWindow = true,
                 };
@@ -203,30 +197,29 @@ namespace cpm_dotnet.Commands
                     process.WaitForExit();
                     if (process.ExitCode != 0)
                     {
-                        AnsiConsole.MarkupLine("[bold red]CMake build failed.[/bold red]");
-                        if (!settings.Verbose)
+                        AnsiConsole.MarkupLine("[bold red]CMake build failed.[/]");
+                        if (!Verbose)
                         {
                             AnsiConsole.MarkupLine(process.StandardOutput.ReadToEnd());
                             AnsiConsole.Console.MarkupLine(process.StandardError.ReadToEnd());
                         }
-                        return 1;
+                        return false;
                     }
                 }
 
-                AnsiConsole.MarkupLine("[bold green]Build finished successfully.[/bold green]");
+                AnsiConsole.MarkupLine("[bold green]Build finished successfully.[/]");
+                return true;
             }
             catch (FileNotFoundException)
             {
-                AnsiConsole.MarkupLine("[bold red]Error:[/bold red] `cmake` command not found. Please ensure CMake is installed and in your PATH.");
-                return 1;
+                AnsiConsole.MarkupLine("[bold red]Error:[/] `cmake` command not found. Please ensure CMake is installed and in your PATH.");
+                return false;
             }
             catch (Exception ex)
             {
-                AnsiConsole.WriteException(ex, ExceptionFormats.ShortenPaths | ExceptionFormats.ShowLinks);
-                return 1;
+                AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
+                return false;
             }
-
-            return 0;
         }
     }
 }

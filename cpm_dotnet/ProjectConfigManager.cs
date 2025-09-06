@@ -44,7 +44,7 @@ namespace cpm_dotnet
 
       try
       {
-        var tomlString = File.ReadAllText(PackageConfigFileName);
+        var tomlString = File.ReadAllText(Path.Combine(PackageConfigFileName));
         var model = Toml.ToModel<ProjectConfig>(tomlString);
         return model;
       }

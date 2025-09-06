@@ -1,38 +1,31 @@
-using Spectre.Console.Cli;
+using DotMake.CommandLine;
 using Spectre.Console;
-using System.ComponentModel;
-using System.IO;
 
 namespace cpm_dotnet.Commands
 {
-    public class CreateCommandSettings : CommandSettings
+    [CliCommand(Name = "create", Description = "Create a new C++ project.", Parent = typeof(RootCommand))]
+    public class CreateCommand
     {
-        [CommandArgument(0, "<NAME>")]
-        [Description("The name of the project.")]
+        [CliArgument(Description = "The name of the project.")]
         public string Name { get; set; } = string.Empty;
 
-        [CommandOption("--type")]
-        [Description("Type of project to create (executable or library). Defaults to executable.")]
-        [DefaultValue("executable")]
+        [CliOption(Description = "Type of project to create (executable or library).")]
         public string Type { get; set; } = "executable";
-    }
 
-    public class CreateCommand : Command<CreateCommandSettings>
-    {
-        public override int Execute(CommandContext context, CreateCommandSettings settings)
+        public void Run()
         {
-            var project_name = settings.Name;
-            AnsiConsole.MarkupLine($"[bold cyan]--- Creating project: {project_name} ---[/]");
+            var projectName = Name;
+            AnsiConsole.MarkupLine($"[bold cyan]--- Creating project: {projectName} --- [/]");
 
             try
             {
                 // Create directories
-                Directory.CreateDirectory(project_name);
-                Directory.CreateDirectory(Path.Combine(project_name, "src"));
-                Directory.CreateDirectory(Path.Combine(project_name, "assets"));
+                Directory.CreateDirectory(projectName);
+                Directory.CreateDirectory(Path.Combine(projectName, "src"));
+                Directory.CreateDirectory(Path.Combine(projectName, "assets"));
 
                 // Create src/main.cpp for executable
-                if (settings.Type == "executable")
+                if (Type == "executable")
                 {
                     var mainCppContent = """
 #include <iostream>
@@ -42,7 +35,7 @@ int main() {
     return 0;
 }
 """;
-                    File.WriteAllText(Path.Combine(project_name, "src", "main.cpp"), mainCppContent);
+                    File.WriteAllText(Path.Combine(projectName, "src", "main.cpp"), mainCppContent);
                 }
 
                 // Create package.toml
@@ -50,32 +43,29 @@ int main() {
                 {
                     Project = new ProjectConfigManager.ProjectSection
                     {
-                        Name = project_name,
-                        Type = settings.Type
+                        Name = projectName,
+                        Type = Type
                     }
                 };
 
-                if (settings.Type == "library")
+                if (Type == "library")
                 {
                     projectConfig.Project.InstallHeaders = true;
                 }
 
-                ProjectConfigManager.SaveConfig(projectConfig, project_name);
+                ProjectConfigManager.SaveConfig(projectConfig, projectName);
 
                 // Create a placeholder .gitignore
                 var gitignoreContent = "build/\nlib/\ncompile_commands.json\n";
-                File.WriteAllText(Path.Combine(project_name, ".gitignore"), gitignoreContent);
+                File.WriteAllText(Path.Combine(projectName, ".gitignore"), gitignoreContent);
 
-                AnsiConsole.MarkupLine($"[bold green]Successfully created project `[bold yellow]{project_name}[/]`.[/]");
-                AnsiConsole.MarkupLine($"To get started, `cd [bold yellow]{project_name}[/]`.");
+                AnsiConsole.MarkupLine($"[bold green]Successfully created project `[bold yellow]{projectName}[/]`.[/]");
+                AnsiConsole.MarkupLine($"To get started, `cd [bold yellow]{projectName}[/]`.");
             }
             catch (Exception ex)
             {
-                AnsiConsole.WriteException(ex, ExceptionFormats.ShortenPaths | ExceptionFormats.ShowLinks);
-                return 1;
+                AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
             }
-
-            return 0;
         }
     }
 }
