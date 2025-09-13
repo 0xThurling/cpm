@@ -7,13 +7,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
-    <NoWarn>$(NoWarn);IL2104</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Tommy" Version="3.1.2" />
     <PackageReference Include="Spectre.Console" Version="0.50.0" />
     <PackageReference Include="DotMake.CommandLine" Version="2.0.0" />
-    <PackageReference Include="Tomlyn" Version="0.19.0" />
   </ItemGroup>
 
 </Project>

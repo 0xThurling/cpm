@@ -1,10 +1,6 @@
 using DotMake.CommandLine;
 using Spectre.Console;
-using System.ComponentModel;
-using System.IO;
 using System.Diagnostics;
-using System.Collections.Generic;
-using System;
 
 namespace cpm_dotnet.Commands
 {
@@ -33,17 +29,18 @@ namespace cpm_dotnet.Commands
                 Verbose = false, // Tests usually don't need verbose build output
                 Standard = Standard
             };
-            if (!buildCommand.Run())
+
+            if (buildCommand.Run() != 0)
             {
                 return 1; // Build failed
             }
 
-            AnsiConsole.MarkupLine("[bold cyan]--- Running Tests ---");
+            AnsiConsole.MarkupLine("[bold cyan]--- Running Tests --- [/]");
 
             var testExecutable = Path.Combine("build", "run_tests");
             if (!File.Exists(testExecutable))
             {
-                AnsiConsole.MarkupLine("[bold red]Error:[/bold red] Test executable not found. Ensure googletest is a dependency and project builds correctly.");
+                AnsiConsole.MarkupLine("[bold red]Error:[/] Test executable not found. Ensure googletest is a dependency and project builds correctly.");
                 return 1;
             }
 
@@ -80,15 +77,15 @@ namespace cpm_dotnet.Commands
                     process.WaitForExit();
                     if (process.ExitCode != 0)
                     {
-                        AnsiConsole.MarkupLine("[bold red]Tests failed.[/bold red]");
+                        AnsiConsole.MarkupLine("[bold red]Tests failed.[/]");
                         return 1;
                     }
                 }
-                AnsiConsole.MarkupLine("[bold green]All tests passed.[/bold green]");
+                AnsiConsole.MarkupLine("[bold green]All tests passed.[/]");
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/red]");
+                AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
                 return 1;
             }
 

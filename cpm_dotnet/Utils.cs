@@ -1,5 +1,6 @@
 using Spectre.Console;
 using System.Text;
+using cpm_dotnet.Models;
 
 namespace cpm_dotnet
 {
@@ -7,7 +8,7 @@ namespace cpm_dotnet
     {
         public static void GenerateResourceFiles(List<string> resources)
         {
-            AnsiConsole.MarkupLine("[bold cyan]--- Generating resource files ---");
+            AnsiConsole.MarkupLine("[bold cyan]--- Generating resource files --- [/]");
 
             var headerPath = Path.Combine("src", "embedded_resources.h");
             var cppPath = Path.Combine("src", "embedded_resources.cpp");
@@ -62,7 +63,7 @@ namespace cpm_dotnet
                 var line = new StringBuilder("    ");
                 for (var i = 0; i < data.Length; i++)
                 {
-                    line.Append($"0x{data[i]:x2}, ");
+                    line.Append($"0x{{data[i]:x2}}, ");
                     if ((i + 1) % 16 == 0)
                     {
                         cppLines.Add(line.ToString());
@@ -124,7 +125,7 @@ namespace cpm_dotnet
 
         public static void CreateTests()
         {
-            AnsiConsole.MarkupLine("[bold cyan]--- Creating tests ---");
+            AnsiConsole.MarkupLine("[bold cyan]--- Creating tests --- [/]");
 
             // Create tests directory
             Directory.CreateDirectory("test");
@@ -136,7 +137,7 @@ namespace cpm_dotnet
             // Demonstrate some basic assertions.
             TEST(HelloTest, BasicAssertions) {
                 // Expect two strings not to be equal.
-                EXPECT_STRNE(""hello"", ""world"");
+                EXPECT_STRNE(\"hello\", \"world\");
                 // Expect equality.
                 EXPECT_EQ(7 * 6, 42);
             }
@@ -154,7 +155,7 @@ namespace cpm_dotnet
 
             if (!config.Dependencies.ContainsKey("googletest"))
             {
-                config.Dependencies.Add("googletest", new ProjectConfigManager.Dependency
+                config.Dependencies.Add("googletest", new Dependency
                 {
                     Git = "https://github.com/google/googletest.git",
                     Tag = "v1.14.0"

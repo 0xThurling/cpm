@@ -1,5 +1,6 @@
 using DotMake.CommandLine;
 using Spectre.Console;
+using cpm_dotnet.Models;
 
 namespace cpm_dotnet.Commands
 {
@@ -31,7 +32,7 @@ namespace cpm_dotnet.Commands
 
             if (config.Resources == null)
             {
-                config.Resources = new ProjectConfigManager.ResourcesSection();
+                config.Resources = new ResourcesSection();
             }
 
             if (!config.Resources.Files.Contains(relativePath))

@@ -1,7 +1,9 @@
+
 using System.IO;
-using Tomlyn;
-using Tomlyn.Model;
+using Tommy;
 using Spectre.Console;
+using cpm_dotnet.Models;
+using System.Text;
 
 namespace cpm_dotnet
 {
@@ -9,49 +11,55 @@ namespace cpm_dotnet
   {
     private const string PackageConfigFileName = "package.toml";
 
-    public class ProjectConfig
-    {
-      public ProjectSection Project { get; set; } = new ProjectSection();
-      public Dictionary<string, Dependency> Dependencies { get; set; } = new Dictionary<string, Dependency>();
-      public ResourcesSection Resources { get; set; } = new ResourcesSection();
-    }
-
-    public class ProjectSection
-    {
-      public string Name { get; set; } = string.Empty;
-      public string Type { get; set; } = "executable"; // Default to executable
-      public bool InstallHeaders { get; set; } = false;
-    }
-
-    public class Dependency
-    {
-      public string Git { get; set; } = string.Empty;
-      public string Tag { get; set; } = string.Empty;
-      public string Target { get; set; } = string.Empty; // Optional, defaults to key name
-    }
-
-    public class ResourcesSection
-    {
-      public List<string> Files { get; set; } = new List<string>();
-    }
-
     public static ProjectConfig? LoadConfig()
     {
-      if (!File.Exists(PackageConfigFileName))
+      var projectRoot = FindProjectRoot();
+      if (projectRoot == null)
       {
         return null;
       }
+
+      var configPath = Path.Combine(projectRoot, PackageConfigFileName);
 
       try
       {
-        var tomlString = File.ReadAllText(Path.Combine(PackageConfigFileName));
-        var model = Toml.ToModel<ProjectConfig>(tomlString);
-        return model;
-      }
-      catch (TomlException ex)
-      {
-        AnsiConsole.MarkupLine($"[bold red]Error parsing {PackageConfigFileName}:[/] {ex.Message}");
-        return null;
+        using (var reader = new StreamReader(File.OpenRead(configPath)))
+        {
+            var toml = TOML.Parse(reader);
+            var config = new ProjectConfig
+            {
+                Project = new ProjectSection
+                {
+                    Name = toml["project"]["name"],
+                    Type = toml["project"]["type"],
+                    InstallHeaders = toml["project"]["install_headers"]
+                },
+                Dependencies = new Dictionary<string, Dependency>()
+            };
+
+            if (toml.HasKey("dependencies"))
+            {
+                var depsTable = toml["dependencies"].AsTable;
+                foreach (var key in depsTable.Keys)
+                {
+                    var depTable = depsTable[key];
+                    config.Dependencies.Add(key, new Dependency
+                    {
+                        Git = depTable["git"],
+                        Tag = depTable["tag"],
+                        Target = depTable.HasKey("target") ? depTable["target"] : ""
+                    });
+                }
+            }
+
+            if (toml.HasKey("resources") && toml["resources"].HasKey("files"))
+            {
+                var filesArray = toml["resources"]["files"].AsArray;
+                config.Resources.Files = filesArray.RawArray.Select(node => node.ToString()).Where(s => s != null).Select(s => s!).ToList();
+            }
+
+            return config;
+        }
       }
       catch (Exception ex)
       {
@@ -60,12 +68,78 @@ namespace cpm_dotnet
       }
     }
 
+    public static string? FindProjectRoot()
+    {
+      var currentDir = Directory.GetCurrentDirectory();
+      while (currentDir != null)
+      {
+        if (File.Exists(Path.Combine(currentDir, PackageConfigFileName)))
+        {
+          return currentDir;
+        }
+        currentDir = Directory.GetParent(currentDir)?.FullName;
+      }
+      return null;
+    }
+
     public static void SaveConfig(ProjectConfig config, string project_name = "")
     {
       try
       {
-        var tomlString = Toml.FromModel(config);
-        File.WriteAllText(Path.Combine(project_name, PackageConfigFileName), tomlString);
+        var path = string.IsNullOrEmpty(project_name) ? FindProjectRoot() : project_name;
+        if (path == null)
+        {
+          AnsiConsole.MarkupLine($"[bold red]Error writing to {PackageConfigFileName}:[/] Could not find project root");
+          return;
+        }
+
+        var toml = new TomlTable
+        {
+            ["project"] = new TomlTable
+            {
+                ["name"] = config.Project.Name,
+                ["type"] = config.Project.Type,
+                ["install_headers"] = config.Project.InstallHeaders
+            }
+        };
+
+        if (config.Dependencies.Any())
+        {
+            var depsTable = new TomlTable();
+            foreach (var dep in config.Dependencies)
+            {
+                var depTable = new TomlTable
+                {
+                    IsInline = true,
+                    ["git"] = dep.Value.Git,
+                    ["tag"] = dep.Value.Tag
+                };
+                if (!string.IsNullOrEmpty(dep.Value.Target))
+                {
+                    depTable["target"] = dep.Value.Target;
+                }
+                depsTable[dep.Key] = depTable;
+            }
+            toml["dependencies"] = depsTable;
+        }
+
+        if (config.Resources.Files.Any())
+        {
+            var resourcesTable = new TomlTable();
+            var filesArray = new TomlArray();
+            foreach (var file in config.Resources.Files)
+            {
+                filesArray.Add(file);
+            }
+            resourcesTable["files"] = filesArray;
+            toml["resources"] = resourcesTable;
+        }
+        
+        using (var writer = new StringWriter())
+        {
+            toml.WriteTo(writer);
+            File.WriteAllText(Path.Combine(path, PackageConfigFileName), writer.ToString());
+        }
       }
       catch (Exception ex)
       {
@@ -76,6 +150,8 @@ namespace cpm_dotnet
 
     public static string? GetProjectName()
     {
+      var projectRoot = FindProjectRoot();
+      if (projectRoot == null) return null;
       var config = LoadConfig();
       return config?.Project?.Name;
     }
