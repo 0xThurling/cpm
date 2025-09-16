@@ -8,10 +8,10 @@ namespace cpm_dotnet.Commands
     public class TestCommand
     {
         [CliArgument(Description = "Optional: Name of the test suite to run (e.g., MyTestSuite).")]
-        public string? TestSuiteName { get; set; }
+        public string? TestSuiteName { get; set; } = null;
 
         [CliOption(Description = "Filter tests to run (e.g., MyTestSuite.TestName or MyTestSuite.*).")]
-        public string? Filter { get; set; }
+        public string? Filter { get; set; } = null;
 
         [CliOption(Description = "C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")]
         public string Standard { get; set; } = "20";

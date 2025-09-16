@@ -111,11 +111,11 @@ namespace cpm_dotnet.Commands
             cmakeContent.AppendLine("enable_testing()");
             cmakeContent.AppendLine("");
             cmakeContent.AppendLine($"file(GLOB_RECURSE TEST_SOURCES \"${{PROJECT_SOURCE_DIR}}/test/*.cpp\")");
-            cmakeContent.AppendLine("message(STATUS \"Found test sources: ${{TEST_SOURCES}}\")");
+            cmakeContent.AppendLine("message(STATUS \"Found test sources: ${TEST_SOURCES}\")");
             cmakeContent.AppendLine("");
-            cmakeContent.AppendLine("set(SOURCES_FOR_TESTS ${{SOURCES}})");
-            cmakeContent.AppendLine("if(EXISTS \"${{PROJECT_SOURCE_DIR}}/src/main.cpp\")");
-            cmakeContent.AppendLine("    list(REMOVE_ITEM SOURCES_FOR_TESTS \"${{PROJECT_SOURCE_DIR}}/src/main.cpp\")");
+            cmakeContent.AppendLine("set(SOURCES_FOR_TESTS ${SOURCES})");
+            cmakeContent.AppendLine("if(EXISTS \"${PROJECT_SOURCE_DIR}/src/main.cpp\")");
+            cmakeContent.AppendLine("    list(REMOVE_ITEM SOURCES_FOR_TESTS \"${PROJECT_SOURCE_DIR}/src/main.cpp\")");
             cmakeContent.AppendLine("endif()");
             cmakeContent.AppendLine("");
             cmakeContent.AppendLine($"add_executable(run_tests ${{TEST_SOURCES}} ${{SOURCES_FOR_TESTS}})");

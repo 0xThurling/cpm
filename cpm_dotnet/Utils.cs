@@ -49,7 +49,7 @@ namespace cpm_dotnet
             {
                 if (!File.Exists(resourcePath))
                 {
-                    AnsiConsole.MarkupLine($"[bold yellow]Warning:[/yellow] Resource file not found: {resourcePath}. Skipping.");
+                    AnsiConsole.MarkupLine($"[bold yellow]Warning:[/] Resource file not found: {resourcePath}. Skipping.");
                     continue;
                 }
                 validResources.Add(resourcePath);
@@ -63,7 +63,7 @@ namespace cpm_dotnet
                 var line = new StringBuilder("    ");
                 for (var i = 0; i < data.Length; i++)
                 {
-                    line.Append($"0x{{data[i]:x2}}, ");
+                    line.Append($"0x{data[i]:x2}, ");
                     if ((i + 1) % 16 == 0)
                     {
                         cppLines.Add(line.ToString());
@@ -102,7 +102,7 @@ namespace cpm_dotnet
 
             File.WriteAllLines(cppPath, cppLines);
 
-            AnsiConsole.MarkupLine($"[bold green]Successfully generated `[bold]{headerPath}[/]` and `[bold]{cppPath}[/]`.");
+            AnsiConsole.MarkupLine($"[bold green]Successfully generated `[bold]{headerPath}[/]` and `[bold]{cppPath}[/][/]`.");
         }
 
         private static string SanitizeFileName(string fileName)
@@ -137,7 +137,7 @@ namespace cpm_dotnet
             // Demonstrate some basic assertions.
             TEST(HelloTest, BasicAssertions) {
                 // Expect two strings not to be equal.
-                EXPECT_STRNE(\"hello\", \"world\");
+                EXPECT_STRNE("hello", "world");
                 // Expect equality.
                 EXPECT_EQ(7 * 6, 42);
             }
@@ -149,9 +149,11 @@ namespace cpm_dotnet
             var config = ProjectConfigManager.LoadConfig();
             if (config == null)
             {
-                AnsiConsole.MarkupLine("[bold red]Error:[/bold red] `package.toml` not found.");
+                AnsiConsole.MarkupLine("[bold red]Error:[/] `package.toml` not found.");
                 return; // Or throw an exception
             }
+
+            Console.WriteLine("Test");
 
             if (!config.Dependencies.ContainsKey("googletest"))
             {
@@ -161,14 +163,14 @@ namespace cpm_dotnet
                     Tag = "v1.14.0"
                 });
                 ProjectConfigManager.SaveConfig(config);
-                AnsiConsole.MarkupLine("[bold green]Added googletest dependency to package.toml.[/bold green]");
+                AnsiConsole.MarkupLine("[bold green]Added googletest dependency to package.toml.[/]");
             }
             else
             {
-                AnsiConsole.MarkupLine("[yellow]googletest dependency already exists in package.toml.[/yellow]");
+                AnsiConsole.MarkupLine("[yellow]googletest dependency already exists in package.toml.[/]");
             }
 
-            AnsiConsole.MarkupLine("[bold green]Tests created successfully.[/bold green]");
+            AnsiConsole.MarkupLine("[bold green]Tests created successfully.[/]");
         }
     }
 }

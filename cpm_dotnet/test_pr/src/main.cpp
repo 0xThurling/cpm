@@ -1,6 +1,10 @@
+#include "embedded_resources.h"
 #include <iostream>
 
 int main() {
-    std::cout << "Hello, C++ World!" << std::endl;
-    return 0;
+  const Embedded::Resource& icon = Embedded::get("test.jpg");
+
+  std::cout << icon.size << std::endl;
+
+  return 0; 
 }
