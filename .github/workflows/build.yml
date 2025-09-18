@@ -1,0 +1,61 @@
+name: .NET Release Build
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        arch: [x64, arm64]
+        include:
+          - os: ubuntu-latest
+            arch: x64
+            rid: linux-x64
+          - os: ubuntu-latest
+            arch: arm64
+            rid: linux-arm64
+          - os: macos-latest
+            arch: x64
+            rid: osx-x64
+          - os: macos-latest
+            arch: arm64
+            rid: osx-arm64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build and publish
+      run: dotnet publish -c Release -r ${{ matrix.rid }} --self-contained true
+
+    - name: Prepare package
+      shell: bash
+      run: |
+        cd bin/Release/net9.0/${{ matrix.rid }}/publish
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          tar -czvf ../../../../../cpm-${{ matrix.rid }}.tar.gz .
+        else
+          zip -r ../../../../../cpm-${{ matrix.rid }}.zip .
+        fi
+
+    - name: Upload Release Asset
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          gh release upload ${{ github.event.release.tag_name }} cpm-${{ matrix.rid }}.tar.gz
+        else
+          gh release upload ${{ github.event.release.tag_name }} cpm-${{ matrix.rid }}.zip
+        fi
