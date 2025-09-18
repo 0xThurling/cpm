@@ -12,15 +12,10 @@ jobs:
       contents: write
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        arch: [x64, arm64]
         include:
           - os: ubuntu-latest
             arch: x64
             rid: linux-x64
-          - os: macos-latest
-            arch: x64
-            rid: osx-x64
           - os: macos-latest
             arch: arm64
             rid: osx-arm64
