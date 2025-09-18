@@ -14,6 +14,18 @@
 
 ## Installation
 
+### Using the install script (macOS and Linux)
+
+You can install `cpm` by running the following command in your terminal:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/0xThurling/cpm/main/install.sh | bash
+```
+
+This will download and run the `install.sh` script, which will install the `cpm` binary in `/usr/local/bin`.
+
+### Manual Installation
+
 1.  Download the latest binary for your platform from the [releases page](https://github.com/0xThurling/cpm/releases).
 2.  Make the binary executable:
     ```bash
