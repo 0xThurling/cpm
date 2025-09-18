@@ -14,63 +14,39 @@
 
 ## Installation
 
-### Prerequisites
+1.  Download the latest binary for your platform from the [releases page](https://github.com/0xThurling/cpm/releases).
+2.  Make the binary executable:
+    ```bash
+    chmod +x cpm
+    ```
+3.  Move the binary to a directory in your `PATH`. For example:
+    ```bash
+    # For macOS and Linux
+    sudo mv cpm /usr/local/bin/
+    ```
 
-*   **Python 3.6+:** `cpm` is a Python script.
-*   **CMake 3.20+:** Required for building C++ projects.
-*   **Git:** Necessary for fetching Git-based dependencies.
+### Supported Platforms
 
-### Easy Installation (Cross-Platform)
+*   macOS (x64, arm64)
+*   Linux (x64)
 
-You can install `cpm` with a single command by running the `install.py` script:
-
-```bash
-git clone https://github.com/0xThurling/cpm.git
-cd cpm
-python3 install.py
-```
-
-The script will:
-1.  Check for all the prerequisites.
-2.  Install all needed dependencies in a virtual environment.
-3.  Add `cpm` to your system's PATH.
-
-### Updating
-
-To update `cpm` to the latest version, simply run the `install.py` script again from within the `cpm` directory.
-
-## Usage
+## CLI Commands
 
 ### `cpm create <project_name>`
 
-Creates a new C++ project.
-
-```bash
-cpm create my_new_project
-```
-
-This will create a directory `my_new_project` with the following structure:
-
-```
-my_new_project/
-├── src/
-│   └── main.cpp
-├── assets/
-├── package.toml
-└── .gitignore
-```
+Creates a new C++ project with a standard directory structure.
 
 ### `cpm build`
 
-Generates the `CMakeLists.txt` file and builds the project.
+Generates `CMakeLists.txt` and builds the project.
 
 ### `cpm run [program_args...]`
 
-Builds and runs the executable. Arguments after `run` are passed to your program.
+Builds and runs the executable. Arguments are passed to your program.
 
 ### `cpm test`
 
-Builds and runs the tests. If the test directory does not exist, `cpm` will automatically create it, add a sample test file, and configure `googletest` for you.
+Builds and runs tests. It will automatically set up Google Test if not present.
 
 ### `cpm clean`
 
@@ -78,28 +54,15 @@ Removes the `build/` directory.
 
 ### `cpm embed <file_path>`
 
-Registers a resource file (e.g., `assets/icon.png`) in your `package.toml`. The `cpm build` command will then generate C++ code to make the asset's data available at runtime.
-
-```bash
-cpm embed assets/icon.png
-```
-
-In your code, you can then access the asset:
-```cpp
-#include "embedded_resources.h"
-
-const Embedded::Resource& icon = Embedded::get("icon.png");
-// Use icon.data and icon.size
-```
+Embeds a resource file into the executable.
 
 ### `cpm new <entity> <name>`
 
-Generates boilerplate code in the `src/` directory.
-
-*   **`cpm new class <ClassName>`**: Creates `ClassName.h` and `ClassName.cpp`.
-*   **`cpm new struct <StructName>`**: Creates `StructName.h` and `StructName.cpp`.
-*   **`cpm new header <FileName>`**: Creates a blank header file `FileName.h`.
-*   **`cpm new source <FileName>`**: Creates `FileName.h` and `FileName.cpp`.
+Generates boilerplate code.
+*   `class <ClassName>`: Creates a class.
+*   `struct <StructName>`: Creates a struct.
+*   `header <FileName>`: Creates a header file.
+*   `source <FileName>`: Creates a header and source file.
 
 ## `package.toml` Configuration
 
