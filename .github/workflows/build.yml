@@ -8,6 +8,8 @@ jobs:
   build:
     name: Build for ${{ matrix.os }}-${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
