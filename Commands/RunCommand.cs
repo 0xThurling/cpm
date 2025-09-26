@@ -24,53 +24,59 @@ namespace cpm.Commands
         Verbose = Verbose,
         Standard = Standard
       };
+
       if (buildCommand.Run() != 0)
       {
         return 1; // Build failed
       }
 
       var projectName = ProjectConfigManager.GetProjectName();
-      if (string.IsNullOrEmpty(projectName))
-      {
-        AnsiConsole.MarkupLine("[bold red]Error:[/] Could not find project name to run.");
-        return 1;
-      }
 
-      var executablePath = Path.Combine("build", projectName);
-      if (!File.Exists(executablePath))
+      AnsiConsole.Status().Start($"Running {projectName}", ctx =>
       {
-        AnsiConsole.MarkupLine($"[bold red]Error:[/] Executable not found at '[bold]{executablePath}[/]'.");
-        return 1;
-      }
-
-      AnsiConsole.MarkupLine($"[bold cyan]--- Running {projectName} ---[/]");
-      try
-      {
-        var processStartInfo = new ProcessStartInfo(executablePath)
+        if (string.IsNullOrEmpty(projectName))
         {
-          UseShellExecute = false,
-          RedirectStandardOutput = false,
-          RedirectStandardError = false,
-          CreateNoWindow = true,
-        };
-
-        foreach (var arg in ProgramArgs)
-        {
-          processStartInfo.ArgumentList.Add(arg);
+          AnsiConsole.MarkupLine("[bold red]Error:[/] Could not find project name to run.");
+          return 1;
         }
 
-        using (var process = Process.Start(processStartInfo))
+        var executablePath = Path.Combine("build", projectName);
+        if (!File.Exists(executablePath))
         {
-          if (process == null) throw new Exception("Failed to start program process.");
-          process.WaitForExit();
-          return process.ExitCode;
+          AnsiConsole.MarkupLine($"[bold red]Error:[/] Executable not found at '[bold]{executablePath}[/]'.");
+          return 1;
         }
-      }
-      catch (Exception ex)
-      {
-        AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
-        return 1;
-      }
+
+        try
+        {
+          var processStartInfo = new ProcessStartInfo(executablePath)
+          {
+            UseShellExecute = false,
+            RedirectStandardOutput = false,
+            RedirectStandardError = false,
+            CreateNoWindow = true,
+          };
+
+          foreach (var arg in ProgramArgs)
+          {
+            processStartInfo.ArgumentList.Add(arg);
+          }
+
+          using (var process = Process.Start(processStartInfo))
+          {
+            if (process == null) throw new Exception("Failed to start program process.");
+            process.WaitForExit();
+            return process.ExitCode;
+          }
+        }
+        catch (Exception ex)
+        {
+          AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
+          return 1;
+        }
+      });
+
+      return 0;
     }
   }
 }
