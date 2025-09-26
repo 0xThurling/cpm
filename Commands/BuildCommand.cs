@@ -16,7 +16,7 @@ namespace cpm.Commands
 
     public int Run()
     {
-      AnsiConsole.Status().Start("Building", ctx =>
+      AnsiConsole.Status().Start("Building Project...", ctx =>
       {
         var projectConfig = ProjectConfigManager.LoadConfig();
 
