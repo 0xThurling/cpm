@@ -125,8 +125,6 @@ namespace cpm
 
         public static void CreateTests()
         {
-            AnsiConsole.MarkupLine("[bold cyan]--- Creating tests --- [/]");
-
             // Create tests directory
             Directory.CreateDirectory("test");
 
