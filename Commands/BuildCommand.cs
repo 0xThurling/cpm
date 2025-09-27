@@ -28,6 +28,17 @@ namespace cpm.Commands
 
         var projectName = projectConfig.Project.Name;
 
+        if (projectConfig.Scripts.TryGetValue("pre-build", out var preBuildScript))
+        {
+            AnsiConsole.MarkupLine("[bold]Running pre-build script...[/]");
+            var runCommand = new RunCommand { ScriptName = "pre-build" };
+            if (runCommand.Run() != 0)
+            {
+                AnsiConsole.MarkupLine("[bold red]Error:[/] Pre-build script failed.");
+                return 1;
+            }
+        }
+
         try
         {
           // Generate resource files if any
@@ -208,6 +219,18 @@ namespace cpm.Commands
           }
 
           AnsiConsole.MarkupLine("[bold green]Build finished successfully.[/]");
+
+          if (projectConfig.Scripts.TryGetValue("post-build", out var postBuildScript))
+          {
+              AnsiConsole.MarkupLine("[bold]Running post-build script...[/]");
+              var runCommand = new RunCommand { ScriptName = "post-build" };
+              if (runCommand.Run() != 0)
+              {
+                  AnsiConsole.MarkupLine("[bold red]Error:[/] Post-build script failed.");
+                  return 1;
+              }
+          }
+
           return 0;
         }
         catch (FileNotFoundException)

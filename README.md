@@ -52,9 +52,13 @@ Creates a new C++ project with a standard directory structure.
 
 Generates `CMakeLists.txt` and builds the project.
 
-### `cpm run [program_args...]`
+### `cpm run [script_name]`
 
-Builds and runs the executable. Arguments are passed to your program.
+If a `script_name` is provided, it will run the corresponding script from the `package.toml` file. If no `script_name` is provided, it will list the available scripts.
+
+### `cpm start`
+
+Builds and runs the project.
 
 ### `cpm test`
 
@@ -99,6 +103,18 @@ files = [
 ### `[resources]` Section
 
 *   `files`: A list of file paths for assets you want to embed in your project via the `cpm embed` command.
+
+### `[scripts]` Section
+
+*   You can define custom scripts in your `package.toml` file that can be run with `cpm run <script_name>`.
+*   `pre-build`: This script will be run before the build process starts.
+*   `post-build`: This script will be run after the build process has finished successfully.
+
+```toml
+[scripts]
+pre-build = "echo pre-build"
+post-build = "echo post-build"
+```
 
 ## Contributing
 
