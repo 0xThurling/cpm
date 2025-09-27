@@ -54,11 +54,27 @@ Generates `CMakeLists.txt` and builds the project.
 
 ### `cpm run [script_name]`
 
-If a `script_name` is provided, it will run the corresponding script from the `package.toml` file. If no `script_name` is provided, it will list the available scripts. If no scripts are defined, it will build and run the project.
+If a `script_name` is provided, it will run the corresponding script from the `package.toml` file. If no scripts are defined, it will build and run the project.
 
-### `cpm start`
+### `cpm project info`
 
-Builds and runs the project.
+Displays a summary of the project's configuration.
+
+### `cpm project tree`
+
+Displays a tree-like structure of the project's files and directories.
+
+### `cpm project stats`
+
+Displays some statistics about the project.
+
+### `cpm project dependencies`
+
+Lists the project's dependencies and their versions.
+
+### `cpm project scripts`
+
+Lists all the scripts in the project.
 
 ### `cpm test`
 

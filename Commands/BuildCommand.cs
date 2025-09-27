@@ -26,7 +26,6 @@ namespace cpm.Commands
 
         if (projectConfig.Scripts.TryGetValue("pre-build", out var preBuildScript))
         {
-            AnsiConsole.MarkupLine("[bold]Running pre-build script...[/]");
             var runCommand = new RunCommand { ScriptName = "pre-build" };
             if (runCommand.Run() != 0)
             {
@@ -235,7 +234,6 @@ namespace cpm.Commands
 
         if (projectConfig.Scripts.TryGetValue("post-build", out var postBuildScript))
         {
-            AnsiConsole.MarkupLine("[bold]Running post-build script...[/]");
             var runCommand = new RunCommand { ScriptName = "post-build" };
             if (runCommand.Run() != 0)
             {
