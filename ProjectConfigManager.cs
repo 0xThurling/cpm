@@ -55,6 +55,15 @@ namespace cpm
                 config.Resources.Files = filesArray.RawArray.Select(node => node.ToString()).Where(s => s != null).Select(s => s!).ToList();
             }
 
+            if (toml.HasKey("scripts"))
+            {
+                var scriptsTable = toml["scripts"].AsTable;
+                foreach (var key in scriptsTable.Keys)
+                {
+                    config.Scripts.Add(key, scriptsTable[key]);
+                }
+            }
+
             return config;
         }
       }
@@ -132,6 +141,16 @@ namespace cpm
             toml["resources"] = resourcesTable;
         }
         
+        if (config.Scripts.Any())
+        {
+            var scriptsTable = new TomlTable();
+            foreach (var script in config.Scripts)
+            {
+                scriptsTable[script.Key] = script.Value;
+            }
+            toml["scripts"] = scriptsTable;
+        }
+
         using (var writer = new StringWriter())
         {
             toml.WriteTo(writer);
