@@ -8,28 +8,19 @@ namespace cpm.Commands
     public class RunCommand
     {
         [CliArgument(Description = "Name of the script to run.")]
-        public string? ScriptName { get; set; }
+        public string? ScriptName { get; set; } = null;
 
         public int Run()
         {
             var config = ProjectConfigManager.LoadConfig();
-            if (config?.Scripts == null || !config.Scripts.Any())
-            {
-                AnsiConsole.MarkupLine("[yellow]No scripts defined in package.toml.[/]");
-                return 0;
-            }
 
             if (string.IsNullOrEmpty(ScriptName))
             {
-                AnsiConsole.MarkupLine("[bold]Available scripts:[/]");
-                foreach (var script in config.Scripts)
-                {
-                    AnsiConsole.MarkupLine($"  [green]{script.Key}[/]");
-                }
-                return 0;
+                var startCommand = new StartCommand();
+                return startCommand.Run();
             }
 
-            if (!config.Scripts.TryGetValue(ScriptName, out var scriptCommand))
+            if (!config!.Scripts.TryGetValue(ScriptName, out var scriptCommand))
             {
                 AnsiConsole.MarkupLine($"[bold red]Error:[/] Script '[bold]{ScriptName}[/]' not found in package.toml.");
                 return 1;

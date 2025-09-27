@@ -54,7 +54,7 @@ Generates `CMakeLists.txt` and builds the project.
 
 ### `cpm run [script_name]`
 
-If a `script_name` is provided, it will run the corresponding script from the `package.toml` file. If no `script_name` is provided, it will list the available scripts.
+If a `script_name` is provided, it will run the corresponding script from the `package.toml` file. If no `script_name` is provided, it will list the available scripts. If no scripts are defined, it will build and run the project.
 
 ### `cpm start`
 

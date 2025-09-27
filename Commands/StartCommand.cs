@@ -1,10 +1,8 @@
-using DotMake.CommandLine;
 using Spectre.Console;
 using System.Diagnostics;
 
 namespace cpm.Commands
 {
-    [CliCommand(Name = "start", Description = "Build and run the project.", Parent = typeof(RootCommand))]
     public class StartCommand
     {
         public int Run()
