@@ -4,52 +4,33 @@ using System.Diagnostics;
 
 namespace cpm.Commands
 {
-  [CliCommand(Name = "run", Description = "Build and run the project.", Parent = typeof(RootCommand))]
+  [CliCommand(Name = "run", Description = "Run a custom script.", Parent = typeof(RootCommand))]
   public class RunCommand
   {
-    [CliOption(Description = "Show verbose output from CMake during the build.")]
-    public bool Verbose { get; set; }
-
-    [CliOption(Description = "C++ standard to use (e.g., 11, 14, 17, 20). Defaults to 20.")]
-    public string Standard { get; set; } = "20";
-
-    [CliArgument(Description = "Arguments to pass to the program.")]
-    public string[] ProgramArgs { get; set; } = Array.Empty<string>();
+    [CliArgument(Description = "Name of the script to run.")]
+    public string? ScriptName { get; set; } = null;
 
     public int Run()
     {
-      // First, build the project
-      var buildCommand = new BuildCommand
-      {
-        Verbose = Verbose,
-        Standard = Standard
-      };
+      var config = ProjectConfigManager.LoadConfig();
 
-      if (buildCommand.Run() != 0)
+      if (string.IsNullOrEmpty(ScriptName))
       {
-        return 1; // Build failed
+        var startCommand = new StartCommand();
+        return startCommand.Run();
       }
 
-      var projectName = ProjectConfigManager.GetProjectName();
-
-      AnsiConsole.Status().Start($"Running {projectName}", ctx =>
+      AnsiConsole.Status().Start(ScriptName != null ? $"Running {ScriptName}" : "Running project...", ctx =>
       {
-        if (string.IsNullOrEmpty(projectName))
+        if (!config!.Scripts.TryGetValue(ScriptName!, out var scriptCommand))
         {
-          AnsiConsole.MarkupLine("[bold red]Error:[/] Could not find project name to run.");
-          return 1;
-        }
-
-        var executablePath = Path.Combine("build", projectName);
-        if (!File.Exists(executablePath))
-        {
-          AnsiConsole.MarkupLine($"[bold red]Error:[/] Executable not found at '[bold]{executablePath}[/]'.");
+          AnsiConsole.MarkupLine($"[bold red]Error:[/] Script '[bold]{ScriptName}[/]' not found in package.toml.");
           return 1;
         }
 
         try
         {
-          var processStartInfo = new ProcessStartInfo(executablePath)
+          var processStartInfo = new ProcessStartInfo("bash", $"-c \"{scriptCommand}\"")
           {
             UseShellExecute = false,
             RedirectStandardOutput = false,
@@ -57,14 +38,9 @@ namespace cpm.Commands
             CreateNoWindow = true,
           };
 
-          foreach (var arg in ProgramArgs)
-          {
-            processStartInfo.ArgumentList.Add(arg);
-          }
-
           using (var process = Process.Start(processStartInfo))
           {
-            if (process == null) throw new Exception("Failed to start program process.");
+            if (process == null) throw new Exception("Failed to start script process.");
             process.WaitForExit();
             return process.ExitCode;
           }
