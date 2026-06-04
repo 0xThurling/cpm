@@ -25,6 +25,9 @@ public class TestingSection : CMakeSectionBase
       }
     }
 
+    // From Conan
+    testDeps.AddRange(ProjectBuildManager.LinkDependencies);
+
     return $@"
 # --- Testing ---
 enable_testing()
