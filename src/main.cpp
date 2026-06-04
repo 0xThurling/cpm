@@ -2,11 +2,21 @@
 #include "commands/create.hpp"
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
+#include "utils/project_config_manager.hpp"
 
 int main(int argc, char** argv) {
+  // Initialise the application
   CLI::App app {"Forge CLI"};
 
-  // Initialise my arguments  
+  sol::state lua;
+  lua.open_libraries(sol::lib::base);
+
+  // ProjectConfigManager manager(lua);
+  //
+  // std::cout << manager.get_root_directory() << '\n';
+
+  // Initialise my arguments 
+  // TODO: Abstract to more generic function
   CreateCommandArgs command_args {};
 
   // Add commands

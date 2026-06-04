@@ -49,7 +49,7 @@ target_include_directories(${PROJECT_NAME}_tests PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/build/googletest-src/googletest/include
   ${CMAKE_CURRENT_SOURCE_DIR}/build/googletest-src/googletest
 )
-target_link_libraries(${PROJECT_NAME}_tests PUBLIC GTest::gtest_main ftxui::screen ftxui::dom ftxui::component CLI11::CLI11 forge-utils)
+target_link_libraries(${PROJECT_NAME}_tests PUBLIC GTest::gtest_main ftxui::screen ftxui::dom ftxui::component CLI11::CLI11 forge-utils sol2::sol2)
 include(GoogleTest)
 gtest_discover_tests(${PROJECT_NAME}_tests)
        
