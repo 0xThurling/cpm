@@ -1,5 +1,4 @@
 #include "CLI/CLI.hpp"
-#include "commands/command.hpp"
 #include "commands/command_registry.hpp"
 #include "commands/temp.hpp"
 #include <memory>
