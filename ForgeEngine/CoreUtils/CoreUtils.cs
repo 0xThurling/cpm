@@ -43,6 +43,9 @@ public static partial class CoreUtils
   [GeneratedRegex(@"^\s*(constexpr|consteval|inline|static)\s+")]
   private static partial Regex QualifierPattern();
 
+  [GeneratedRegex(@"^(?:(?:return|if|for|while|switch|case|catch|throw|delete|new|sizeof|else|do|goto|break|continue|assert)\b|(?:EXPECT|ASSERT|CHECK|REQUIRE|BENCHMARK|TEST|TYPED_TEST)_)")]
+  private static partial Regex ControlFlowOrMacroPattern();
+
   /// <summary>
   /// Detects the current Linux distribution from /etc/os-release.
   /// </summary>
@@ -211,13 +214,25 @@ public static partial class CoreUtils
     }
     Directory.CreateDirectory(includeDir);
     var cppFiles = Directory.GetFiles(srcDir, "*.cpp", SearchOption.AllDirectories);
+    var hppFiles = Directory.GetFiles(srcDir, "*.hpp", SearchOption.AllDirectories);
 
-    if (cppFiles.Length == 0)
+    if (cppFiles.Length == 0 && hppFiles.Length == 0)
     {
-      AnsiConsole.MarkupLine($"[bold yellow]Warning:[/] No .cpp files found in src/. Skipping header generation.");
+      AnsiConsole.MarkupLine($"[bold yellow]Warning:[/] No source files found in src/. Skipping header generation.");
       return;
     }
     AnsiConsole.MarkupLine("[cyan]--- Generating library headers ---[/]");
+
+    // Copy hand-written .hpp files from src/ verbatim
+    foreach (var hppFile in hppFiles)
+    {
+      var relativePath = Path.GetRelativePath(srcDir, hppFile);
+      var targetPath = Path.Combine(includeDir, relativePath);
+      Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+      File.Copy(hppFile, targetPath, true);
+      AnsiConsole.MarkupLine($"[green]Copied:[/] {targetPath}");
+    }
+
     foreach (var cppFile in cppFiles)
     {
       var fileName = Path.GetFileNameWithoutExtension(cppFile);
@@ -225,7 +240,7 @@ public static partial class CoreUtils
       var headerPath = Path.Combine(includeDir, headerFileName);
       var content = File.ReadAllText(cppFile);
 
-      // Skip if manual header exists
+      // Skip if a hand-written header exists (from src/ or manual in include/)
       if (File.Exists(headerPath))
       {
         AnsiConsole.MarkupLine($"[dim]Skipping {headerPath} - manual header exists[/]");
@@ -267,7 +282,7 @@ public static partial class CoreUtils
         AnsiConsole.MarkupLine($"[yellow]Warning:[/] No declarations found in {fileName}.cpp. Skipping.");
       }
     }
-    AnsiConsole.MarkupLine($"[bold green]Header generation complete. Found {cppFiles.Length} source file(s).[/]");
+    AnsiConsole.MarkupLine($"[bold green]Header generation complete. Found {cppFiles.Length + hppFiles.Length} source file(s).[/]");
   }
 
   private static string ExtractNamespace(string source)
@@ -444,6 +459,9 @@ public static partial class CoreUtils
 
       if (trimmed.Contains("->")) continue;
 
+      // Skip control-flow statements and test/macro invocations that only look like calls
+      if (ControlFlowOrMacroPattern().IsMatch(trimmed)) continue;
+
       bool isDecl = FunctionPointerPattern().IsMatch(trimmed);
 
       if (isDecl && !declarations.Contains(trimmed))
@@ -490,6 +508,31 @@ public static partial class CoreUtils
     var endSearchStart = Math.Min(match.Index + match.Length, source.Length - 1);
     var lineEnd = source.IndexOf('\n', endSearchStart);
     return source[lineStart..(lineEnd < 0 ? source.Length : lineEnd)].TrimStart();
+  }
+
+  private static bool HasTemplatePrecededLine(string source, int matchIndex)
+  {
+    var cursor = matchIndex;
+    while (cursor >= 0)
+    {
+      // Start of the line containing (or starting at) cursor
+      var lineStart = source.LastIndexOf('\n', cursor) + 1;
+      // Index of the '\n' that ends the previous line, or -1
+      var prevEnd = lineStart - 1;
+      if (prevEnd < 0) return false;
+
+      var prevStart = source.LastIndexOf('\n', prevEnd - 1) + 1;
+      var prevLine = source[prevStart..prevEnd].Trim();
+      if (prevLine.Length == 0)
+      {
+        cursor = prevStart - 1;
+        continue;
+      }
+      return prevLine.StartsWith("template")
+        || prevLine.StartsWith("requires")
+        || prevLine.StartsWith("concept");
+    }
+    return false;
   }
 
   private static void ExtractOperators(string source, ref List<string> declarations)
@@ -595,6 +638,9 @@ public static partial class CoreUtils
       // Skip trailing-return functions - handled separately by ExtractTrailingReturnTypes
       if (trimmed.Contains("->")) continue;
 
+      // Skip control-flow statements and test/macro invocations that only look like calls
+      if (ControlFlowOrMacroPattern().IsMatch(trimmed)) continue;
+
       var attributePrefix = "";
       var attributeMatch = AttributePattern().Match(trimmed);
 
@@ -607,25 +653,14 @@ public static partial class CoreUtils
       string? candidate = null;
       if (trimmed.EndsWith(';'))
       {
-        candidate = trimmed;
+        candidate = trimmed.TrimEnd(';');
       }
       else if (trimmed.Contains('(') && (trimmed.Contains('{') || trimmed.EndsWith(')')))
       {
         // Try to capture the signature part before the body or newline
         int braceIndex = trimmed.IndexOf('{');
-        if (braceIndex >= 0)
-        {
-          candidate = trimmed[..braceIndex].Trim();
-        }
-        else
-        {
-          candidate = trimmed;
-        }
-
-        if (!candidate.EndsWith(';'))
-        {
-          candidate += ";";
-        }
+        candidate = (braceIndex >= 0 ? trimmed[..braceIndex] : trimmed).Trim();
+        candidate = candidate.TrimEnd(';');
       }
       else
       {
@@ -641,7 +676,9 @@ public static partial class CoreUtils
 
       foreach (var pattern in patterns)
       {
-        var match = Regex.Match(candidate, pattern);
+        // Anchor to the full line so body statements (return f(x);, o && pred(x))
+        // can never match a partial signature
+        var match = Regex.Match(candidate, $"^{pattern}$");
         if (match.Success)
         {
           var decl = FormatSimpleDeclaration(match, pattern)?.Trim();
@@ -695,7 +732,12 @@ public static partial class CoreUtils
       {
         var fullLine = GetFullLine(source, match);
 
-        if (fullLine.StartsWith("requires") || fullLine.StartsWith("concept")) continue;
+        if (fullLine.StartsWith("template")
+            || fullLine.StartsWith("requires")
+            || fullLine.StartsWith("concept")) continue;
+        // Template-parameterized functions are handled by ExtractTemplateFunctions,
+        // which emits them with their `template <...>` prefix and trailing return type
+        if (HasTemplatePrecededLine(source, match.Index)) continue;
         if (pattern.Contains("->\\s*auto") && !fullLine.Contains("->")) continue;
 
         // Extract attribute prefix from the full line
@@ -753,32 +795,49 @@ public static partial class CoreUtils
 
     var patterns = new[]
     {
-        @"template\s*<([^>]+)>\s*(?:requires\s+[\w:]+(?:<[^>]*>)?\s+)?(?:constexpr|consteval|inline|static)?\s*([\w:]+[\s\*&<>]*)\s+(\w+)\s*\(([^)]*)\)(?:\s*const)?(?:\s*noexcept)?(?:\s*->\s*[^{;]+)?(?:\s*override)?(?:\s*final)?",
+        @"template\s*<(?<tparams>[^>]+)>\s*(?:requires\s+[\w:]+(?:<[^>]*>)?\s+)?(?:constexpr|consteval|inline|static)?\s*(?<ret>[\w:]+(?:\s*<[^>]*>)?[\s\*&<>]*)\s+(?<name>\w+)\s*\((?<args>[^)]*)\)(?:\s*const)?(?:\s*noexcept)?(?<arrow>\s*->\s*[^{;]+)?(?:\s*override)?(?:\s*final)?",
         @"template\s*<([^>]+)>\s*([\w:]+[\s\*&<>]*)\s+(\w+)\s*::\s*(\w+)\s*\(([^)]*)\)",
         @"template\s*<([^>]+)>\s*requires\s+([^{]+)\s*([\w:]+[\s\*&<>]*)\s+(\w+)\s*\(([^)]*)\)",
     };
 
-    foreach (var pattern in patterns)
+    for (var i = 0; i < patterns.Length; i++)
     {
-      foreach (Match match in Regex.Matches(normalised, pattern, RegexOptions.Multiline))
+      foreach (Match match in Regex.Matches(normalised, patterns[i], RegexOptions.Multiline))
       {
-        var decl = FormatTemplateDeclaration(match);
+        var decl = FormatTemplateDeclaration(match, i);
         if (!string.IsNullOrEmpty(decl) && !declarations.Contains(decl))
           declarations.Add(decl);
       }
     }
   }
 
-  private static string? FormatTemplateDeclaration(Match match)
+  private static string? FormatTemplateDeclaration(Match match, int patternIndex)
   {
     try
     {
-      if (match.Groups.Count < 4) return null;
+      string templateParams;
+      string returnType;
+      string funcName;
+      string args;
+      var arrowSuffix = "";
 
-      var templateParams = match.Groups[1].Value.Trim();
-      var returnType = match.Groups[^3].Value.Trim();
-      var funcName = match.Groups[^2].Value.Trim();
-      var args = match.Groups[^1].Value.Trim();
+      if (patternIndex == 0)
+      {
+        templateParams = match.Groups["tparams"].Value.Trim();
+        returnType = match.Groups["ret"].Value.Trim();
+        funcName = match.Groups["name"].Value.Trim();
+        args = match.Groups["args"].Value.Trim();
+        if (match.Groups["arrow"].Success)
+          arrowSuffix = match.Groups["arrow"].Value.TrimEnd();
+      }
+      else
+      {
+        if (match.Groups.Count < 4) return null;
+        templateParams = match.Groups[1].Value.Trim();
+        returnType = match.Groups[^3].Value.Trim();
+        funcName = match.Groups[^2].Value.Trim();
+        args = match.Groups[^1].Value.Trim();
+      }
 
       if (string.IsNullOrEmpty(funcName) || funcName.Contains("::")) return null;
 
@@ -789,7 +848,7 @@ public static partial class CoreUtils
       // Strip qualifier keywords that may bleed into returnType
       returnType = QualifierPattern().Replace(returnType, "").Trim();
 
-      return $"template <{templateParams}> {returnType} {funcName}({args});";
+      return $"template <{templateParams}> {returnType} {funcName}({args}){arrowSuffix};";
     }
     catch { return null; }
   }
