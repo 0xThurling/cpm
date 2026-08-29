@@ -1,0 +1,9 @@
+[requires]
+sol2/3.5.0
+
+[generators]
+CMakeDeps
+CMakeToolchain
+
+[layout]
+cmake_layout

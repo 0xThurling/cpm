@@ -474,9 +474,7 @@ public static partial class CoreUtils
         // For the simple alias pattern, skip lines that are part of a template
         if (!pattern.Contains("template") && !pattern.Contains("enum") && !pattern.Contains("::"))
         {
-          var lineStart = source.LastIndexOf('\n', match.Index) + 1;
-          var lineEnd = source.IndexOf('\n', match.Index);
-          var fullLine = source[lineStart..(lineEnd < 0 ? source.Length : lineEnd)].TrimStart();
+          var fullLine = GetFullLine(source, match);
           if (fullLine.StartsWith("template")) continue;
         }
 
@@ -484,6 +482,14 @@ public static partial class CoreUtils
           declarations.Add(decl);
       }
     }
+  }
+
+  private static string GetFullLine(string source, Match match)
+  {
+    var lineStart = source.LastIndexOf('\n', match.Index) + 1;
+    var endSearchStart = Math.Min(match.Index + match.Length, source.Length - 1);
+    var lineEnd = source.IndexOf('\n', endSearchStart);
+    return source[lineStart..(lineEnd < 0 ? source.Length : lineEnd)].TrimStart();
   }
 
   private static void ExtractOperators(string source, ref List<string> declarations)
@@ -557,16 +563,37 @@ public static partial class CoreUtils
   private static void ExtractSimpleFunctions(string source, ref List<string> declarations)
   {
     var lines = source.Split('\n');
+    var prevDeclaredTemplate = false;
 
     foreach (var line in lines)
     {
       // Skip template functions - handled separately 
-      if (line.TrimStart().StartsWith("template")) continue;
-      if (line.TrimStart().StartsWith("requires")) continue;
-      if (line.TrimStart().StartsWith("concept")) continue;
+      if (line.TrimStart().StartsWith("template"))
+      {
+        prevDeclaredTemplate = true;
+        continue;
+      }
+      if (line.TrimStart().StartsWith("requires") || line.TrimStart().StartsWith("concept"))
+      {
+        prevDeclaredTemplate = true;
+        continue;
+      }
 
       var trimmed = line.Trim();
-      if (string.IsNullOrEmpty(trimmed)) continue;
+      if (string.IsNullOrEmpty(trimmed))
+      {
+        prevDeclaredTemplate = false;
+        continue;
+      }
+
+      // A signature following a template/requires/concept header belongs to that declaration -
+      // handled separately by ExtractTemplateFunctions / ExtractConcepts
+      var isTemplateBody = prevDeclaredTemplate;
+      prevDeclaredTemplate = prevDeclaredTemplate && !trimmed.EndsWith(';') && trimmed.EndsWith(',');
+      if (isTemplateBody || trimmed.EndsWith(">")) continue;
+
+      // Skip trailing-return functions - handled separately by ExtractTrailingReturnTypes
+      if (trimmed.Contains("->")) continue;
 
       var attributePrefix = "";
       var attributeMatch = AttributePattern().Match(trimmed);
@@ -666,9 +693,7 @@ public static partial class CoreUtils
     {
       foreach (Match match in Regex.Matches(source, pattern, RegexOptions.Multiline))
       {
-        var lineStart = source.LastIndexOf('\n', match.Index) + 1;
-        var lineEnd = source.IndexOf('\n', match.Index);
-        var fullLine = source[lineStart..(lineEnd < 0 ? source.Length : lineEnd)].TrimStart();
+        var fullLine = GetFullLine(source, match);
 
         if (fullLine.StartsWith("requires") || fullLine.StartsWith("concept")) continue;
         if (pattern.Contains("->\\s*auto") && !fullLine.Contains("->")) continue;
